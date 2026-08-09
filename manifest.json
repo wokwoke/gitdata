@@ -1,0 +1,14 @@
+{
+  "name": "GitData — riset konten dev harian",
+  "short_name": "GitData",
+  "description": "Temuin repo GitHub/GitLab trending dan langsung ubah jadi carousel/video konten.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#06070A",
+  "theme_color": "#0D1117",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

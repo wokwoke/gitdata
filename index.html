@@ -1,0 +1,1796 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitData — riset konten dev harian</title>
+<meta name="description" content="Temuin repo GitHub/GitLab trending dan langsung ubah jadi carousel/video konten.">
+<meta name="theme-color" content="#0D1117">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GitData">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-top: #06070A;
+    --bg-mid: #0D1117;
+    --bg-bottom: #030405;
+    --bg-elevated: #12161D;
+    --bg-raised: #1A1F27;
+    --border: #333B46;
+    --border-soft: #262C35;
+    --text: #F5F7FA;
+    --text-dim: #ABB4BF;
+    --text-faint: #808B98;
+    --green: #46C161;
+    --green-bg: #122b17;
+    --red: #F85149;
+    --blue: #6CB2FF;
+    --purple: #C79BFF;
+    --yellow: #E3A83B;
+  }
+  :root[data-theme="light"]{
+    --bg-top: #F4F5F7;
+    --bg-mid: #FFFFFF;
+    --bg-bottom: #EBEDF0;
+    --bg-elevated: #FFFFFF;
+    --bg-raised: #F1F3F5;
+    --border: #D7DBE0;
+    --border-soft: #E5E8EB;
+    --text: #14171C;
+    --text-dim: #4B5561;
+    --text-faint: #7A8390;
+    --green: #1E8E42;
+    --green-bg: #E7F6EB;
+    --red: #D93025;
+    --blue: #1A6FD1;
+    --purple: #7C4DDB;
+    --yellow: #9A6A0A;
+  }
+  :root[data-theme="light"] body{
+    background:
+      radial-gradient(circle at 15% 0%, rgba(30,142,66,0.05), transparent 42%),
+      radial-gradient(circle at 85% 8%, rgba(26,111,209,0.05), transparent 42%),
+      linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 35%, var(--bg-mid) 65%, var(--bg-bottom) 100%);
+  }
+  :root[data-theme="light"] select option{background:#fff; color:#14171C;}
+  :root[data-theme="light"] .cursor{background:var(--green);}
+  :root[data-theme="light"] .repo-name, :root[data-theme="light"] .detail-title, :root[data-theme="light"] .brand{color:var(--text);}
+  :root[data-theme="light"] .term::before{color:#B8BEC6;}
+  .theme-toggle{background:var(--bg-elevated); border:1px solid var(--border); color:var(--text-dim); width:34px; height:34px; border-radius:8px; cursor:pointer; font-size:15px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .theme-toggle:hover{border-color:var(--blue); color:var(--blue);}
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{color:var(--text); font-family:'IBM Plex Sans', sans-serif; min-height:100vh;}
+  .mono{font-family:'JetBrains Mono', monospace;}
+  body{
+    background:
+      radial-gradient(circle at 15% 0%, rgba(70,193,97,0.07), transparent 42%),
+      radial-gradient(circle at 85% 8%, rgba(108,178,255,0.06), transparent 42%),
+      linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 35%, var(--bg-mid) 65%, var(--bg-bottom) 100%);
+    background-attachment:fixed;
+  }
+  .wrap{max-width:960px; margin:0 auto; padding:32px 20px 80px;}
+
+  header{margin-bottom:22px;}
+  .top-row{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--green); box-shadow:0 0 10px var(--green);}
+  .brand{font-family:'JetBrains Mono', monospace; font-weight:800; font-size:23px; letter-spacing:-0.5px; color:var(--text);}
+  .brand span{color:var(--text-faint); font-weight:500;}
+  .tagline{color:var(--text-dim); font-size:13.5px; margin-bottom:18px; margin-left:20px;}
+
+  .term{
+    background:var(--bg-elevated); border:1px solid var(--border); border-radius:8px;
+    padding:14px 16px; font-family:'JetBrains Mono', monospace; font-size:13px;
+    overflow-x:auto; white-space:nowrap; position:relative;
+  }
+  .term::before{content:"● ● ●"; display:block; color:var(--border); font-size:9px; letter-spacing:3px; margin-bottom:8px;}
+  .term .prompt{color:var(--green); font-weight:700;}
+  .term .cmd{color:var(--blue); font-weight:700;}
+  .term .flag{color:var(--purple);}
+  .term .val{color:var(--yellow);}
+  .cursor{display:inline-block; width:7px; height:14px; background:var(--green); animation:blink 1s step-end infinite; vertical-align:middle; margin-left:2px;}
+  @keyframes blink{50%{opacity:0;}}
+
+  /* ---------- COLLECTIONS ---------- */
+  .section-label{
+    font-family:'JetBrains Mono', monospace; font-size:11.5px; text-transform:uppercase; letter-spacing:1px;
+    color:var(--text-faint); margin:26px 2px 10px; display:flex; align-items:center; gap:8px;
+  }
+  .section-label::after{content:""; flex:1; height:1px; background:var(--border-soft);}
+
+  .install-bar{display:none; align-items:center; justify-content:space-between; gap:12px; background:var(--green-bg); border:1px solid var(--green); border-radius:10px; padding:12px 16px; margin-bottom:18px; font-family:'JetBrains Mono', monospace; font-size:12.5px; color:var(--green);}
+  .install-bar button{font-family:inherit; font-weight:700; border:none; border-radius:6px; padding:8px 14px; cursor:pointer; font-size:12px;}
+  .install-bar .install-yes{background:var(--green); color:#04140a;}
+  .install-bar .install-no{background:transparent; color:var(--text-faint);}
+
+  .saved-section{margin-bottom:4px;}
+  .saved-rail{display:flex; gap:8px; overflow-x:auto; padding-bottom:4px;}
+  .saved-chip{display:flex; align-items:center; gap:8px; background:var(--bg-elevated); border:1px solid var(--border); border-radius:20px; padding:7px 8px 7px 14px; white-space:nowrap; cursor:pointer; flex-shrink:0;}
+  .saved-chip:hover{border-color:var(--yellow);}
+  .saved-name{font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--text-dim);}
+  .saved-x{background:none; border:none; color:var(--text-faint); cursor:pointer; width:18px; height:18px; border-radius:50%; font-size:11px;}
+  .saved-x:hover{color:var(--red); background:rgba(248,81,73,0.1);}
+  .bookmark-btn{background:none; border:1px solid var(--border); color:var(--text-faint); width:30px; height:30px; border-radius:6px; cursor:pointer; font-size:14px; flex-shrink:0; display:flex; align-items:center; justify-content:center;}
+  .bookmark-btn:hover{border-color:var(--yellow); color:var(--yellow);}
+  .bookmark-btn.active{color:var(--yellow); border-color:var(--yellow); background:rgba(227,168,59,0.1);}
+  .entry-top-right{display:flex; align-items:center; gap:8px;}
+  .compare-btn{background:none; border:1px solid var(--border); color:var(--text-faint); width:30px; height:30px; border-radius:6px; cursor:pointer; font-size:12px; flex-shrink:0; display:flex; align-items:center; justify-content:center;}
+  .compare-btn:hover{border-color:var(--blue); color:var(--blue);}
+  .compare-btn.active{color:var(--blue); border-color:var(--blue); background:rgba(108,178,255,0.1);}
+
+  .compare-bar{position:fixed; left:0; right:0; bottom:0; z-index:80; background:var(--bg-elevated); border-top:1px solid var(--border); padding:12px 20px; display:none; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; box-shadow:0 -10px 30px rgba(0,0,0,.3);}
+  .compare-bar.show{display:flex;}
+  .compare-bar-items{display:flex; gap:8px; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-dim); flex-wrap:wrap;}
+  .compare-bar-items span{background:var(--bg-mid); border:1px solid var(--border-soft); padding:5px 10px; border-radius:6px;}
+  .compare-bar .btn{padding:9px 16px;}
+
+  #compareView{display:none;}
+  .compare-grid{display:grid; grid-template-columns:1fr auto 1fr; gap:14px; align-items:start;}
+  .compare-col{background:var(--bg-elevated); border:1px solid var(--border); border-radius:10px; padding:18px;}
+  .compare-vs{font-family:'JetBrains Mono',monospace; font-weight:800; font-size:15px; color:var(--text-faint); align-self:center; padding-top:60px;}
+  .compare-name{font-family:'JetBrains Mono', monospace; font-weight:800; font-size:16px; margin-bottom:6px; word-break:break-word;}
+  .compare-desc{font-size:12.5px; color:var(--text-dim); line-height:1.5; margin-bottom:14px;}
+  .compare-row{display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-top:1px solid var(--border-soft); font-family:'JetBrains Mono',monospace; font-size:12.5px;}
+  .compare-row .lbl{color:var(--text-faint); font-size:10.5px; text-transform:uppercase; letter-spacing:.5px;}
+  .compare-row .val{color:var(--text); font-weight:600;}
+  .compare-row .val.win{color:var(--green);}
+  @media (max-width:640px){
+    .compare-grid{grid-template-columns:1fr; }
+    .compare-vs{padding-top:0; text-align:center;}
+  }
+
+  #batchView{display:none;}
+  .batch-item{display:flex; align-items:center; gap:12px; background:var(--bg-elevated); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:8px;}
+  .batch-item input[type=checkbox]{width:16px; height:16px; flex-shrink:0;}
+  .batch-item-name{font-family:'JetBrains Mono',monospace; font-size:13px; flex:1;}
+  .batch-item-meta{font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--text-faint);}
+  .batch-empty{text-align:center; padding:40px 20px; color:var(--text-faint); font-family:'JetBrains Mono',monospace; font-size:13px;}
+
+  .quick-search{display:flex; gap:8px; margin-bottom:4px;}
+  .quick-search input{flex:1; font-size:14px; padding:11px 14px; border-radius:8px;}
+  .quick-search input:focus{border-color:var(--green); box-shadow:0 0 0 2px rgba(70,193,97,0.15);}
+  .quick-search .btn{padding:11px 18px; white-space:nowrap;}
+  .quick-hint{font-size:11.5px; color:var(--text-faint); margin:6px 2px 0; font-family:'JetBrains Mono', monospace;}
+  .collections-grid{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(210px,1fr)); gap:12px; margin-bottom:8px;
+  }
+  .coll-card{
+    background:var(--bg-elevated); border:1px solid var(--border); border-radius:10px; padding:16px;
+    cursor:pointer; transition:all .15s ease; text-align:left;
+  }
+  .coll-card:hover{border-color:var(--green); transform:translateY(-2px); background:var(--bg-raised);}
+  .coll-icon{font-size:20px; margin-bottom:8px; display:block;}
+  .coll-title{font-family:'JetBrains Mono', monospace; font-weight:700; font-size:13.5px; color:var(--text); margin-bottom:4px;}
+  .coll-desc{font-size:12px; color:var(--text-faint); line-height:1.45;}
+
+  .filters{margin-top:8px; background:var(--bg-elevated); border:1px solid var(--border); border-radius:8px; padding:16px;}
+  .filter-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:12px; margin-bottom:12px;}
+  .field label{display:block; font-size:11px; text-transform:uppercase; letter-spacing:0.6px; color:var(--text-faint); margin-bottom:6px; font-family:'JetBrains Mono',monospace;}
+  select, input{width:100%; background:var(--bg-mid); border:1px solid var(--border); color:var(--text); padding:8px 10px; border-radius:6px; font-family:'JetBrains Mono', monospace; font-size:13px; outline:none;}
+  select:focus, input:focus{border-color:var(--blue); box-shadow:0 0 0 2px rgba(108,178,255,0.15);}
+  select option{background:var(--bg-elevated); color:var(--text);}
+
+  .action-row{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+  .btn{font-family:'JetBrains Mono', monospace; font-weight:600; font-size:13px; padding:9px 16px; border-radius:6px; border:1px solid var(--border); background:var(--bg-mid); color:var(--text); cursor:pointer; display:flex; align-items:center; gap:8px; transition:all .15s ease;}
+  .btn:hover{border-color:var(--green); color:var(--green);}
+  .btn.primary{background:var(--green-bg); border-color:var(--green); color:var(--green);}
+  .btn.primary:hover{background:var(--green); color:#04140a;}
+  .btn:disabled{opacity:.5; cursor:not-allowed;}
+  .src-toggle{display:flex; gap:6px; margin:0;}
+  .src-btn{font-family:'JetBrains Mono',monospace; font-size:12px; padding:7px 12px; border-radius:6px; border:1px solid var(--border); background:var(--bg-mid); color:var(--text-dim); cursor:pointer;}
+  .src-btn.active{border-color:var(--blue); color:var(--blue); background:rgba(108,178,255,0.1);}
+
+  .meta-bar{display:flex; justify-content:space-between; align-items:center; margin:18px 2px 12px; font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--text-faint);}
+  .status{display:flex; align-items:center; gap:8px;}
+  .spinner{width:12px;height:12px;border-radius:50%; border:2px solid var(--border-soft); border-top-color:var(--green); animation:spin .7s linear infinite; display:none;}
+  .spinner.show{display:inline-block;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .log{position:relative; padding-left:26px;}
+  .log::before{content:""; position:absolute; left:5px; top:8px; bottom:8px; width:2px; background:linear-gradient(var(--border), transparent);}
+  .entry{position:relative; background:var(--bg-elevated); border:1px solid var(--border); border-radius:8px; padding:16px 18px; margin-bottom:12px; transition:border-color .15s ease, transform .15s ease; cursor:pointer;}
+  .entry:hover{border-color:var(--blue); transform:translateX(2px); background:var(--bg-raised);}
+  .entry::before{content:""; position:absolute; left:-25px; top:22px; width:11px; height:11px; border-radius:50%; background:var(--bg-mid); border:2px solid var(--green);}
+  .entry-top{display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:8px;}
+  .repo-name{font-family:'JetBrains Mono', monospace; font-weight:700; font-size:15.5px; color:var(--text); word-break:break-word;}
+  .repo-name .owner{color:var(--text-faint); font-weight:500;}
+  .repo-name .go{color:var(--text-faint); font-weight:400; font-size:12px; margin-left:6px;}
+  .entry:hover .repo-name{color:var(--blue);}
+  .stat-mini{font-family:'JetBrains Mono', monospace; font-size:12.5px; font-weight:600; white-space:nowrap; display:flex; gap:10px;}
+  .stat-mini .s{color:var(--yellow);}
+  .stat-mini .f{color:var(--text-dim); font-weight:500;}
+  .desc{color:var(--text-dim); font-size:13.5px; line-height:1.5; margin-bottom:12px;}
+  .tags{display:flex; gap:8px; flex-wrap:wrap; align-items:center; font-family:'JetBrains Mono', monospace; font-size:11.5px;}
+  .lang-dot{width:9px; height:9px; border-radius:50%; display:inline-block; margin-right:5px;}
+  .tag{color:var(--text-faint); background:var(--bg-mid); border:1px solid var(--border-soft); padding:3px 9px; border-radius:20px; display:flex; align-items:center;}
+  .tag.diff-add{color:var(--green); border-color:rgba(70,193,97,0.35); background:var(--green-bg);}
+  .tag.diff-add::before{content:"+ ";}
+
+  .empty, .err{text-align:center; padding:50px 20px; color:var(--text-faint); font-family:'JetBrains Mono', monospace; font-size:13px;}
+  .err{color:var(--red);}
+
+  footer{text-align:center; margin-top:30px; color:var(--text-faint); font-family:'JetBrains Mono', monospace; font-size:11.5px;}
+
+  #detailView{display:none;}
+  .back-btn{display:inline-flex; align-items:center; gap:8px; background:none; border:none; color:var(--text-dim); font-family:'JetBrains Mono', monospace; font-size:13px; cursor:pointer; padding:8px 0; margin-bottom:14px;}
+  .back-btn:hover{color:var(--blue);}
+
+  .detail-head{background:var(--bg-elevated); border:1px solid var(--border); border-radius:10px; padding:22px; margin-bottom:16px;}
+  .detail-head-top{display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap;}
+  .detail-title{font-family:'JetBrains Mono', monospace; font-weight:800; font-size:20px; color:var(--text);}
+  .detail-title .owner{color:var(--text-faint); font-weight:500;}
+  .detail-desc{color:var(--text-dim); font-size:14px; line-height:1.6; margin-top:10px; max-width:640px;}
+  .gh-link{font-family:'JetBrains Mono', monospace; font-size:12.5px; font-weight:600; white-space:nowrap; background:var(--green-bg); color:var(--green); border:1px solid var(--green); padding:9px 14px; border-radius:6px; text-decoration:none; display:flex; align-items:center; gap:6px;}
+  .gh-link:hover{background:var(--green); color:#04140a;}
+  .head-actions{display:flex; gap:8px; flex-wrap:wrap;}
+  .carousel-btn{font-family:'JetBrains Mono', monospace; font-size:12.5px; font-weight:600; white-space:nowrap; background:rgba(108,178,255,0.1); color:var(--blue); border:1px solid var(--blue); padding:9px 14px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:6px;}
+  .carousel-btn:hover{background:var(--blue); color:#04140a;}
+
+  .stat-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(100px,1fr)); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:8px; overflow:hidden; margin-bottom:16px;}
+  .stat-cell{background:var(--bg-elevated); padding:14px 12px;}
+  .stat-num{font-family:'JetBrains Mono', monospace; font-weight:700; font-size:18px; color:var(--text);}
+  .stat-label{font-family:'JetBrains Mono', monospace; font-size:10.5px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.5px; margin-top:3px;}
+
+  .panel{background:var(--bg-elevated); border:1px solid var(--border); border-radius:10px; padding:18px 20px; margin-bottom:16px;}
+  .panel-title{font-family:'JetBrains Mono', monospace; font-weight:700; font-size:12.5px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.6px; margin-bottom:14px; display:flex; align-items:center; gap:8px;}
+  .panel-title::before{content:""; width:8px; height:8px; background:var(--blue); border-radius:2px;}
+
+  .lang-bar{display:flex; height:10px; border-radius:6px; overflow:hidden; margin-bottom:10px;}
+  .lang-legend{display:flex; flex-wrap:wrap; gap:10px 16px; font-family:'JetBrains Mono', monospace; font-size:12px;}
+  .lang-legend-item{display:flex; align-items:center; gap:6px; color:var(--text-dim);}
+  .lang-legend-item b{color:var(--text);}
+
+  .commit-chart{display:flex; align-items:flex-end; gap:2px; height:70px; margin-bottom:6px;}
+  .commit-bar{flex:1; background:var(--green); opacity:0.9; border-radius:2px 2px 0 0; min-height:2px;}
+  .commit-bar:hover{opacity:1;}
+  .chart-caption{font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--text-faint); display:flex; justify-content:space-between;}
+
+  .contrib-row{display:flex; flex-wrap:wrap; gap:12px;}
+  .contrib{display:flex; align-items:center; gap:8px; background:var(--bg-mid); border:1px solid var(--border-soft); padding:6px 12px 6px 6px; border-radius:20px;}
+  .contrib img{width:26px; height:26px; border-radius:50%; display:block;}
+  .contrib-name{font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--text-dim);}
+  .contrib-count{font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--text-faint);}
+
+  .loading-line, .note-line{font-family:'JetBrains Mono', monospace; font-size:12.5px; color:var(--text-faint); padding:6px 0;}
+
+  .caption-card{background:var(--bg-mid); border:1px solid var(--border-soft); border-radius:8px; padding:14px; margin-bottom:10px;}
+  .caption-label{font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--purple); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;}
+  .caption-text{font-size:13px; color:var(--text-dim); line-height:1.6; white-space:pre-wrap; font-family:'IBM Plex Sans',sans-serif;}
+  .copy-btn{font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600; background:var(--bg-elevated); border:1px solid var(--border); color:var(--text-dim); padding:5px 10px; border-radius:6px; cursor:pointer;}
+  .copy-btn:hover{border-color:var(--green); color:var(--green);}
+  .copy-btn.copied{border-color:var(--green); color:var(--green); background:var(--green-bg);}
+
+  /* ---------- CAROUSEL VIEW ---------- */
+  #carouselView{display:none;}
+  .carousel-layout{display:flex; gap:24px; flex-wrap:wrap; align-items:flex-start;}
+  .carousel-editor{flex:1; min-width:280px;}
+  .carousel-editor .panel{margin-bottom:12px;}
+  .ce-row{display:flex; gap:8px; margin-bottom:8px;}
+  .ce-row input, .ce-row textarea{flex:1;}
+  .ce-scene-label{font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--purple); text-transform:uppercase; letter-spacing:0.6px; margin-bottom:2px; display:flex; align-items:center; gap:6px; justify-content:space-between;}
+  .ce-scene-label .name{display:flex; align-items:center; gap:6px;}
+  .ce-actions{display:flex; gap:4px;}
+  .ce-mini-btn{font-family:'JetBrains Mono', monospace; font-size:11px; background:var(--bg-mid); border:1px solid var(--border); color:var(--text-dim); border-radius:5px; width:24px; height:24px; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;}
+  .ce-mini-btn:hover{border-color:var(--blue); color:var(--blue);}
+  .ce-mini-btn.ce-del:hover{border-color:var(--red); color:var(--red);}
+  .ce-dur-row{display:flex; justify-content:flex-end; margin-bottom:8px;}
+  .ce-dur-row span{font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--text-faint);}
+  .ce-dur-row input.dur-input{width:56px; flex:none; font-size:11px; padding:4px 6px; margin-left:6px;}
+
+  .cs-add-row{background:var(--bg-elevated); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:14px;}
+  .cs-add-label{font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.6px; margin-bottom:8px;}
+  .cs-add-btns{display:flex; flex-wrap:wrap; gap:6px;}
+  .cs-add-btn{font-family:'JetBrains Mono', monospace; font-size:12px; padding:6px 12px; border-radius:6px; border:1px dashed var(--border); background:transparent; color:var(--text-dim); cursor:pointer;}
+  .cs-add-btn:hover{border-color:var(--green); border-style:solid; color:var(--green);}
+
+  .ce-asset-row{display:flex; gap:6px; margin:8px 0 4px;}
+  .ce-asset-row input{flex:1; font-size:12px;}
+  .ce-asset-row .btn{font-size:11.5px; padding:8px 10px;}
+  .icon-results{display:flex; flex-wrap:wrap; gap:6px; margin:8px 0;}
+  .icon-pick{width:30px; height:30px; border-radius:6px; border:1px solid var(--border); background:var(--bg-mid); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:5px;}
+  .icon-pick:hover{border-color:var(--green);}
+  .icon-pick img{width:100%; height:100%;}
+  .icon-selected{display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--text-faint); font-family:'JetBrains Mono',monospace; margin:6px 0;}
+  .icon-preview{width:18px; height:18px;}
+  .bg-thumb-grid{display:flex; flex-wrap:wrap; gap:6px; margin:8px 0;}
+  .bg-thumb{width:52px; height:52px; border-radius:6px; overflow:hidden; border:1px solid var(--border); cursor:pointer; background-size:cover; background-position:center;}
+  .bg-thumb:hover{border-color:var(--green);}
+  .ce-color-row{display:flex; align-items:center; gap:10px; margin:10px 0 4px;}
+  .ce-color-row label{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.5px;}
+  .ce-color-row input[type=color]{width:36px; height:28px; padding:2px; border-radius:6px; cursor:pointer;}
+  .unsplash-key-row{background:var(--bg-elevated); border:1px solid var(--border); border-radius:10px; padding:10px 14px; margin-bottom:14px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  .unsplash-key-row label{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-faint); white-space:nowrap;}
+  .unsplash-key-row input{flex:1; min-width:160px; font-size:12px;}
+
+  .phone-dock{position:sticky; top:20px; display:flex; flex-direction:column; align-items:center; width:260px; flex-shrink:0;}
+  .phone{position:relative; width:260px; height:462px; border-radius:26px; overflow:hidden; background:var(--bg-mid); box-shadow:0 25px 60px rgba(0,0,0,.6); border:1px solid var(--border);}
+  .phone:fullscreen{width:100vw; height:100vh; max-height:none; border-radius:0; display:flex;}
+  .phone:-webkit-full-screen{width:100vw; height:100vh; max-height:none; border-radius:0;}
+  .fs-btn{position:absolute; top:10px; right:10px; z-index:60; background:rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.25); color:#fff; width:28px; height:28px; border-radius:6px; cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center;}
+  .phone-progress{position:absolute; top:12px; left:12px; right:12px; display:flex; gap:4px; z-index:50;}
+  .phone-progress .seg{flex:1; height:3px; border-radius:2px; background:rgba(255,255,255,0.15); overflow:hidden;}
+  .phone-progress .seg .fill{height:100%; width:0%; background:#fff;}
+  .phone-scene{position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; padding:48px 26px 60px; text-align:center; background-size:cover; background-position:center;}
+  .phone-scene.active{display:flex;}
+  .ps-eyebrow{font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--green); font-weight:700; margin-bottom:10px;}
+  .ps-h1{font-family:'JetBrains Mono',monospace; font-weight:800; font-size:22px; line-height:1.2; color:var(--text);}
+  .ps-h1 span{display:block;}
+  .ps-h1 .accent{color:var(--blue);}
+  .ps-stat{font-family:'JetBrains Mono',monospace; font-weight:800; font-size:48px; color:var(--text); line-height:1;}
+  .ps-stat-label{font-size:13px; font-weight:600; color:var(--text-dim); margin-top:6px;}
+  .ps-chips{display:flex; flex-wrap:wrap; gap:7px; justify-content:center; max-width:230px; margin-top:6px;}
+  .ps-chip{font-family:'JetBrains Mono', monospace; font-size:11px; border:1.5px solid var(--green); color:var(--green); border-radius:999px; padding:5px 11px;}
+  .ps-term{width:100%; max-width:220px; background:rgba(0,0,0,.5); border-radius:12px; padding:14px; text-align:left;}
+  .ps-term .dots span{display:inline-block;width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.2);margin-right:4px;}
+  .ps-term .prompt{font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--green); margin-top:8px;}
+  .ps-card{width:100%; max-width:220px; background:rgba(0,0,0,.5); border-radius:12px; padding:14px; text-align:left; font-family:'JetBrains Mono',monospace; font-size:10.5px; line-height:1.7; color:var(--text-dim);}
+  .ps-card b{color:var(--yellow);}
+  .ps-cta-code{font-family:'JetBrains Mono',monospace; background:var(--green-bg); border:1px solid var(--green); color:var(--green); padding:10px 14px; border-radius:8px; font-size:11.5px; word-break:break-all;}
+  .ps-cta-sub{font-size:13px; color:var(--text-dim); margin-top:8px;}
+  .phone-tag{position:absolute; bottom:14px; left:0; right:0; text-align:center; font-family:'JetBrains Mono'; font-size:10px; color:rgba(255,255,255,0.25);}
+  .ps-icon{width:22px; height:22px; margin-bottom:8px;}
+
+  .phone-scene.light-bg .ps-h1, .phone-scene.light-bg .ps-stat, .phone-scene.light-bg .ps-stat-label, .phone-scene.light-bg .ps-cta-sub{color:#12161D;}
+  .phone-scene.light-bg .ps-eyebrow{color:#1c6b33;}
+  .phone-scene.light-bg .ps-chip{border-color:#1c6b33; color:#1c6b33;}
+  .phone-scene.light-bg .ps-term, .phone-scene.light-bg .ps-card{background:rgba(255,255,255,.6); color:#12161D;}
+  .phone-scene.light-bg .ps-card b{color:#8a5a00;}
+  .phone-scene.light-bg .ps-cta-code{background:rgba(255,255,255,.6); color:#12161D; border-color:#1c6b33;}
+  .phone-scene.light-bg .phone-tag{color:rgba(0,0,0,0.3);}
+
+  .phone-controls{display:flex; gap:8px; margin-top:14px;}
+  .phone-hint{font-size:11px; color:var(--text-faint); text-align:center; margin-top:10px; max-width:230px; line-height:1.5;}
+
+  @media (max-width:520px){
+    .brand{font-size:19px;}
+    .term{font-size:11.5px;}
+    .entry-top{flex-direction:column;}
+    .detail-head-top{flex-direction:column;}
+    .phone-dock{position:static; width:100%; align-items:center;}
+    .carousel-layout{flex-direction:column-reverse;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="listView">
+    <header>
+      <div class="top-row">
+        <div class="dot"></div>
+        <div class="brand">Git<span>Data</span></div>
+        <button class="theme-toggle" id="themeToggleBtn" title="ganti tema" style="margin-left:auto;">🌙</button>
+      </div>
+      <div class="tagline">temuin repo & tools baru yang lagi naik daun — bahan konten harian, bukan basi</div>
+      <div class="install-bar" id="installBar">
+        <span>📲 pasang GitData sebagai app di HP ini biar bukaannya sekali tap</span>
+        <span style="display:flex; gap:8px;">
+          <button class="install-yes" id="installBtn">Pasang</button>
+          <button class="install-no" id="dismissInstallBtn">nanti</button>
+        </span>
+      </div>
+      <div class="term" id="termBar">
+        <span class="prompt">$</span> <span class="cmd">search</span> <span id="termFlags"></span><span class="cursor"></span>
+      </div>
+    </header>
+
+    <div class="section-label saved-section" style="margin-top:0">
+      <span>tersimpan</span>
+      <button class="btn" id="btnOpenBatch" style="font-size:11px; padding:5px 10px; margin-left:auto;">🎬 Batch carousel</button>
+    </div>
+    <div class="saved-rail" id="savedRail"></div>
+
+    <div class="section-label">pencarian cepat</div>
+    <div class="quick-search">
+      <input type="text" id="qsInput" placeholder="udah tau targetnya? ketik nama/keyword repo di sini…">
+      <button class="btn primary" id="qsBtn">🔍 Cari</button>
+    </div>
+    <div class="quick-hint">langsung cari by keyword, tanpa filter tanggal/stars — cocok kalau kamu sudah tau apa yang dicari.</div>
+
+    <div class="section-label">koleksi</div>
+    <div class="collections-grid" id="collectionsGrid"></div>
+
+    <div class="section-label">cari &amp; filter</div>
+    <div class="filters">
+      <div class="filter-grid">
+        <div class="field">
+          <label>Sumber</label>
+          <div class="src-toggle">
+            <button class="src-btn active" data-src="github" id="srcGithub">GitHub</button>
+            <button class="src-btn" data-src="gitlab" id="srcGitlab">GitLab</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Bahasa</label>
+          <select id="fLang">
+            <option value="">Semua</option>
+            <option value="python">Python</option>
+            <option value="javascript">JavaScript</option>
+            <option value="typescript">TypeScript</option>
+            <option value="rust">Rust</option>
+            <option value="go">Go</option>
+            <option value="java">Java</option>
+            <option value="c++">C++</option>
+            <option value="jupyter notebook">Jupyter Notebook</option>
+            <option value="shell">Shell</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Periode dibuat</label>
+          <select id="fSince">
+            <option value="1">24 jam terakhir</option>
+            <option value="7" selected>7 hari terakhir</option>
+            <option value="30">30 hari terakhir</option>
+            <option value="90">3 bulan terakhir</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Min. Stars</label>
+          <select id="fMinStars">
+            <option value="10">10+</option>
+            <option value="50" selected>50+</option>
+            <option value="100">100+</option>
+            <option value="500">500+</option>
+            <option value="1000">1000+</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Urutkan</label>
+          <select id="fSort">
+            <option value="stars">Stars terbanyak</option>
+            <option value="forks">Fork terbanyak</option>
+            <option value="updated">Baru di-update</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Kata kunci (opsional)</label>
+          <input type="text" id="fKeyword" placeholder="mis: agent, llm, cli">
+        </div>
+      </div>
+      <div class="action-row">
+        <button class="btn primary" id="btnRun">↻ Regenerate data</button>
+        <button class="btn" id="btnReset">Reset filter</button>
+      </div>
+    </div>
+
+    <div class="meta-bar">
+      <div class="status"><span class="spinner" id="spinner"></span><span id="statusText">siap.</span></div>
+      <div id="countText"></div>
+    </div>
+
+    <div class="log" id="results"></div>
+
+    <footer>data live dari GitHub Search API &amp; GitLab Public API · dibuat untuk riset konten, bukan afiliasi resmi platform manapun</footer>
+  </div>
+
+  <div id="detailView">
+    <button class="back-btn" id="btnBack">← kembali ke daftar</button>
+    <div id="detailContent"></div>
+  </div>
+
+  <div id="carouselView">
+    <button class="back-btn" id="btnBackFromCarousel">← kembali ke detail repo</button>
+    <div class="section-label" style="margin-top:0">carousel / video konten</div>
+
+    <div class="unsplash-key-row">
+      <label>🔑 Unsplash Access Key (opsional, gratis di unsplash.com/developers, untuk cari foto by keyword):</label>
+      <input type="text" id="unsplashKeyInput" placeholder="tempel access key di sini…">
+    </div>
+
+    <div class="carousel-layout">
+      <div class="carousel-editor">
+        <div class="cs-add-row" id="csAddRow"></div>
+        <div id="csSceneList"></div>
+      </div>
+      <div class="phone-dock">
+        <div class="phone" id="csPhone">
+          <button class="fs-btn" id="csFsBtn" title="layar penuh">⛶</button>
+          <div class="phone-progress" id="csProgress"></div>
+          <div id="csSceneRoot"></div>
+        </div>
+        <div class="phone-controls">
+          <button class="btn primary" id="csPlayBtn">▶ Putar</button>
+          <button class="btn" id="csFullscreenBtn">⛶ Layar Penuh</button>
+          <button class="btn" id="csDownloadBtn">⇩ Unduh HTML</button>
+        </div>
+        <div class="phone-hint">Rekam layar bagian frame HP ini (atau pakai layar penuh), lalu edit di CapCut. Data awal diambil otomatis dari repo, tinggal diedit &amp; disusun ulang di kiri.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="compareView">
+    <button class="back-btn" id="btnBackFromCompare">← kembali ke daftar</button>
+    <div class="section-label" style="margin-top:0">bandingkan repo</div>
+    <div id="compareContent"></div>
+  </div>
+
+  <div id="batchView">
+    <button class="back-btn" id="btnBackFromBatch">← kembali ke daftar</button>
+    <div class="section-label" style="margin-top:0">batch carousel dari tersimpan</div>
+    <div id="batchList"></div>
+    <div class="action-row" style="margin-top:16px;">
+      <button class="btn primary" id="btnBatchZip">⇩ Unduh semua sebagai ZIP</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="compare-bar" id="compareBar">
+  <div class="compare-bar-items" id="compareBarItems"></div>
+  <span style="display:flex; gap:8px;">
+    <button class="btn" id="compareClearBtn">Batal</button>
+    <button class="btn primary" id="compareGoBtn" disabled>🆚 Bandingkan</button>
+  </span>
+</div>
+
+
+<script>
+const els = {
+  lang: document.getElementById('fLang'),
+  since: document.getElementById('fSince'),
+  minStars: document.getElementById('fMinStars'),
+  sort: document.getElementById('fSort'),
+  keyword: document.getElementById('fKeyword'),
+  run: document.getElementById('btnRun'),
+  reset: document.getElementById('btnReset'),
+  results: document.getElementById('results'),
+  status: document.getElementById('statusText'),
+  spinner: document.getElementById('spinner'),
+  count: document.getElementById('countText'),
+  termFlags: document.getElementById('termFlags'),
+  srcGithub: document.getElementById('srcGithub'),
+  srcGitlab: document.getElementById('srcGitlab'),
+  listView: document.getElementById('listView'),
+  detailView: document.getElementById('detailView'),
+  detailContent: document.getElementById('detailContent'),
+  btnBack: document.getElementById('btnBack'),
+  collectionsGrid: document.getElementById('collectionsGrid'),
+  qsInput: document.getElementById('qsInput'),
+  qsBtn: document.getElementById('qsBtn'),
+  carouselView: document.getElementById('carouselView'),
+  csAddRow: document.getElementById('csAddRow'),
+  csSceneList: document.getElementById('csSceneList'),
+  btnBackFromCarousel: document.getElementById('btnBackFromCarousel'),
+  csPhone: document.getElementById('csPhone'),
+  csProgress: document.getElementById('csProgress'),
+  csSceneRoot: document.getElementById('csSceneRoot'),
+  csPlayBtn: document.getElementById('csPlayBtn'),
+  csFullscreenBtn: document.getElementById('csFullscreenBtn'),
+  csFsBtn: document.getElementById('csFsBtn'),
+  csDownloadBtn: document.getElementById('csDownloadBtn'),
+  unsplashKeyInput: document.getElementById('unsplashKeyInput'),
+  compareView: document.getElementById('compareView'),
+  compareContent: document.getElementById('compareContent'),
+  btnBackFromCompare: document.getElementById('btnBackFromCompare'),
+  compareBar: document.getElementById('compareBar'),
+  compareBarItems: document.getElementById('compareBarItems'),
+  compareClearBtn: document.getElementById('compareClearBtn'),
+  compareGoBtn: document.getElementById('compareGoBtn'),
+  batchView: document.getElementById('batchView'),
+  batchList: document.getElementById('batchList'),
+  btnBackFromBatch: document.getElementById('btnBackFromBatch'),
+  btnOpenBatch: document.getElementById('btnOpenBatch'),
+  btnBatchZip: document.getElementById('btnBatchZip'),
+};
+
+let source = 'github';
+let currentItems = [];
+
+const LANG_COLORS = {
+  python:'#3572A5', javascript:'#f1e05a', typescript:'#3178c6', rust:'#dea584',
+  go:'#00ADD8', java:'#b07219', 'c++':'#f34b7d', 'jupyter notebook':'#DA5B0B', shell:'#89e051',
+  html:'#e34c26', css:'#563d7c', ruby:'#701516', php:'#4F5D95', c:'#9dabb5', 'c#':'#178600', swift:'#F05138', kotlin:'#A97BFF'
+};
+function langColor(l){ if(!l) return '#8B949E'; return LANG_COLORS[l.toLowerCase()] || '#8B949E'; }
+
+function fmtNum(n){ if(n==null) return '—'; if(n>=1000) return (n/1000).toFixed(1).replace(/\.0$/,'') + 'k'; return n; }
+function daysAgoISO(days){ const d = new Date(); d.setDate(d.getDate() - days); return d.toISOString().split('T')[0]; }
+function fmtDate(iso){ if(!iso) return '—'; return new Date(iso).toLocaleDateString('id-ID', {day:'numeric', month:'short', year:'numeric'}); }
+
+// ---------- COLLECTIONS ----------
+const COLLECTIONS = [
+  { icon:'🔥', title:'Trending Hari Ini', desc:'Repo baru 24 jam terakhir yang paling banyak dapat star', apply:{since:'1', minStars:'10', sort:'stars', lang:'', keyword:''} },
+  { icon:'🤖', title:'AI Agent & LLM Tools', desc:'Tools seputar agent, LLM, RAG yang lagi ramai dibahas', apply:{since:'30', minStars:'100', sort:'stars', lang:'', keyword:'agent OR llm OR rag'} },
+  { icon:'⚡', title:'Naik Cepat Minggu Ini', desc:'Repo umur 7 hari dengan star tertinggi — cocok buat "baru rilis"', apply:{since:'7', minStars:'50', sort:'stars', lang:'', keyword:''} },
+  { icon:'🛠️', title:'Developer Tools Baru', desc:'CLI, framework, dan tools produktivitas developer', apply:{since:'30', minStars:'50', sort:'stars', lang:'', keyword:'cli OR framework OR tool'} },
+  { icon:'🐍', title:'Python Rising', desc:'Repo Python paling aktif belakangan ini', apply:{since:'30', minStars:'100', sort:'stars', lang:'python', keyword:''} },
+  { icon:'🌐', title:'Web & Frontend', desc:'Library JS/TS yang sedang naik daun', apply:{since:'30', minStars:'100', sort:'stars', lang:'javascript', keyword:''} },
+  { icon:'🍴', title:'Paling Banyak Di-fork', desc:'Diukur dari jumlah fork — sinyal repo dipakai/dibangun ulang orang lain', apply:{since:'90', minStars:'50', sort:'forks', lang:'', keyword:''} },
+  { icon:'🕓', title:'Baru Saja Update', desc:'Repo yang aktif dikembangkan minggu ini', apply:{since:'90', minStars:'50', sort:'updated', lang:'', keyword:''} },
+];
+
+function renderCollections(){
+  els.collectionsGrid.innerHTML = COLLECTIONS.map((c,i) => `
+    <button class="coll-card" data-idx="${i}">
+      <span class="coll-icon">${c.icon}</span>
+      <div class="coll-title">${c.title}</div>
+      <div class="coll-desc">${c.desc}</div>
+    </button>
+  `).join('');
+  els.collectionsGrid.querySelectorAll('.coll-card').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const c = COLLECTIONS[parseInt(btn.dataset.idx)];
+      els.since.value = c.apply.since;
+      els.minStars.value = c.apply.minStars;
+      els.sort.value = c.apply.sort;
+      els.lang.value = c.apply.lang;
+      els.keyword.value = c.apply.keyword;
+      updateTerminal();
+      run();
+      document.querySelector('.filters').scrollIntoView({behavior:'smooth', block:'start'});
+    });
+  });
+}
+
+function updateTerminal(){
+  const lang = els.lang.value, since = els.since.value, minStars = els.minStars.value, kw = els.keyword.value.trim();
+  const sort = els.sort.value;
+  let parts = [`<span class="flag">--source</span>=<span class="val">${source}</span>`];
+  if(lang) parts.push(`<span class="flag">--lang</span>=<span class="val">${lang}</span>`);
+  parts.push(`<span class="flag">--created-since</span>=<span class="val">${since}d</span>`);
+  parts.push(`<span class="flag">--min-stars</span>=<span class="val">${minStars}</span>`);
+  parts.push(`<span class="flag">--sort</span>=<span class="val">${sort}</span>`);
+  if(kw) parts.push(`<span class="flag">--q</span>=<span class="val">"${kw}"</span>`);
+  els.termFlags.innerHTML = parts.join(' ');
+}
+function setStatus(text, loading){
+  els.status.textContent = text;
+  els.spinner.classList.toggle('show', !!loading);
+  els.run.disabled = !!loading;
+}
+
+async function fetchGithub(){
+  const lang = els.lang.value, since = parseInt(els.since.value), minStars = els.minStars.value, kw = els.keyword.value.trim();
+  const sortVal = els.sort.value;
+  const apiSort = sortVal === 'updated' ? 'updated' : (sortVal === 'forks' ? 'forks' : 'stars');
+  let q = `created:>${daysAgoISO(since)} stars:>=${minStars}`;
+  if(lang) q += ` language:${lang}`;
+  if(kw) q += ` ${kw} in:name,description`;
+  const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(q)}&sort=${apiSort}&order=desc&per_page=25`;
+  const res = await fetch(url, { headers:{ 'Accept':'application/vnd.github+json' } });
+  if(!res.ok){ const body = await res.json().catch(()=>({})); throw new Error(body.message || `GitHub API error ${res.status}`); }
+  const data = await res.json();
+  return (data.items || []).map(r => ({
+    source:'github', name: r.name, owner: r.owner.login, full_name: r.full_name, url: r.html_url,
+    description: r.description || 'tanpa deskripsi', stars: r.stargazers_count, forks: r.forks_count,
+    watchers: r.subscribers_count, openIssues: r.open_issues_count, language: r.language,
+    license: r.license ? r.license.spdx_id : null, created: r.created_at, updated: r.pushed_at || r.updated_at,
+    size: r.size, defaultBranch: r.default_branch, topics: (r.topics||[]).slice(0,6)
+  }));
+}
+
+async function fetchGitlab(){
+  const since = parseInt(els.since.value), kw = els.keyword.value.trim();
+  const sortVal = els.sort.value;
+  const orderBy = sortVal === 'updated' ? 'last_activity_at' : 'star_count';
+  let url = `https://gitlab.com/api/v4/projects?order_by=${orderBy}&sort=desc&visibility=public&per_page=25&created_after=${daysAgoISO(since)}`;
+  if(kw) url += `&search=${encodeURIComponent(kw)}`;
+  const res = await fetch(url);
+  if(!res.ok) throw new Error(`GitLab API error ${res.status}`);
+  const data = await res.json();
+  const minStars = parseInt(els.minStars.value);
+  return data.filter(p => (p.star_count||0) >= minStars).map(p => ({
+    source:'gitlab', id: p.id, name: p.name, owner: p.namespace?.name || p.namespace?.path || '',
+    full_name: p.path_with_namespace, url: p.web_url, description: p.description || 'tanpa deskripsi',
+    stars: p.star_count, forks: p.forks_count, watchers: null, openIssues: p.open_issues_count,
+    language: null, license: p.license?.name || null, created: p.created_at, updated: p.last_activity_at,
+    size: null, defaultBranch: p.default_branch, topics: (p.topics||[]).slice(0,6)
+  }));
+}
+
+function clientSort(items){
+  const sortVal = els.sort.value;
+  const arr = items.slice();
+  if(sortVal === 'forks') arr.sort((a,b)=>(b.forks||0)-(a.forks||0));
+  else if(sortVal === 'updated') arr.sort((a,b)=> new Date(b.updated) - new Date(a.updated));
+  else arr.sort((a,b)=>(b.stars||0)-(a.stars||0));
+  return arr;
+}
+
+function render(items){
+  els.results.innerHTML = '';
+  els.count.textContent = items.length ? `${items.length} repo ditemukan` : '';
+  if(!items.length){
+    els.results.innerHTML = `<div class="empty">nggak ada hasil untuk filter ini.<br>coba longgarkan --min-stars atau --created-since.</div>`;
+    return;
+  }
+  items.forEach((item, idx) => {
+    const lc = langColor(item.language);
+    const el = document.createElement('div');
+    el.className = 'entry';
+    el.addEventListener('click', () => showDetail(idx));
+    el.innerHTML = `
+      <div class="entry-top">
+        <div class="repo-name"><span class="owner">${item.owner}/</span>${item.name}<span class="go">→ lihat detail</span></div>
+        <div class="entry-top-right">
+          <div class="stat-mini"><span class="s">★ ${fmtNum(item.stars)}</span><span class="f">⑂ ${fmtNum(item.forks)}</span></div>
+          <button class="bookmark-btn ${isSaved(item)?'active':''}" data-save-idx="${idx}" title="simpan">${isSaved(item)?'★':'☆'}</button>
+          <button class="compare-btn ${isComparing(item)?'active':''}" data-compare-idx="${idx}" title="bandingkan">🆚</button>
+        </div>
+      </div>
+      <div class="desc">${item.description}</div>
+      <div class="tags">
+        ${item.language ? `<span class="tag"><span class="lang-dot" style="background:${lc}"></span>${item.language}</span>` : ''}
+        ${item.topics.map(t => `<span class="tag diff-add">${t}</span>`).join('')}
+      </div>
+    `;
+    el.querySelector('[data-save-idx]').addEventListener('click', (e)=>{
+      e.stopPropagation();
+      toggleSaved(item);
+      render(items);
+    });
+    el.querySelector('[data-compare-idx]').addEventListener('click', (e)=>{
+      e.stopPropagation();
+      toggleCompare(item);
+      render(items);
+    });
+    els.results.appendChild(el);
+  });
+}
+
+async function run(){
+  updateTerminal();
+  setStatus('menarik data terbaru…', true);
+  els.results.innerHTML = '';
+  try{
+    let items = source === 'github' ? await fetchGithub() : await fetchGitlab();
+    items = clientSort(items);
+    currentItems = items;
+    render(items);
+    const now = new Date().toLocaleTimeString('id-ID');
+    setStatus(`selesai · terakhir diperbarui ${now}`, false);
+  }catch(e){
+    els.results.innerHTML = `<div class="err">gagal ambil data: ${e.message}<br><span style="color:var(--text-faint)">coba lagi sebentar lagi, atau kendurkan filter (rate limit API publik terbatas).</span></div>`;
+    setStatus('error.', false);
+  }
+}
+
+async function fetchGithubQuick(keyword){
+  const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(keyword)}&per_page=25`;
+  const res = await fetch(url, { headers:{ 'Accept':'application/vnd.github+json' } });
+  if(!res.ok){ const body = await res.json().catch(()=>({})); throw new Error(body.message || `GitHub API error ${res.status}`); }
+  const data = await res.json();
+  return (data.items || []).map(r => ({
+    source:'github', name: r.name, owner: r.owner.login, full_name: r.full_name, url: r.html_url,
+    description: r.description || 'tanpa deskripsi', stars: r.stargazers_count, forks: r.forks_count,
+    watchers: r.subscribers_count, openIssues: r.open_issues_count, language: r.language,
+    license: r.license ? r.license.spdx_id : null, created: r.created_at, updated: r.pushed_at || r.updated_at,
+    size: r.size, defaultBranch: r.default_branch, topics: (r.topics||[]).slice(0,6)
+  }));
+}
+
+async function fetchGitlabQuick(keyword){
+  const url = `https://gitlab.com/api/v4/projects?search=${encodeURIComponent(keyword)}&order_by=star_count&sort=desc&visibility=public&per_page=25`;
+  const res = await fetch(url);
+  if(!res.ok) throw new Error(`GitLab API error ${res.status}`);
+  const data = await res.json();
+  return data.map(p => ({
+    source:'gitlab', id: p.id, name: p.name, owner: p.namespace?.name || p.namespace?.path || '',
+    full_name: p.path_with_namespace, url: p.web_url, description: p.description || 'tanpa deskripsi',
+    stars: p.star_count, forks: p.forks_count, watchers: null, openIssues: p.open_issues_count,
+    language: null, license: p.license?.name || null, created: p.created_at, updated: p.last_activity_at,
+    size: null, defaultBranch: p.default_branch, topics: (p.topics||[]).slice(0,6)
+  }));
+}
+
+async function quickSearchRun(){
+  const kw = els.qsInput.value.trim();
+  if(!kw) return;
+  setStatus(`mencari "${kw}"…`, true);
+  els.results.innerHTML = '';
+  try{
+    const items = source === 'github' ? await fetchGithubQuick(kw) : await fetchGitlabQuick(kw);
+    currentItems = items;
+    render(items);
+    els.termFlags.innerHTML = `<span class="flag">--q</span>=<span class="val">"${kw}"</span> <span class="flag">--source</span>=<span class="val">${source}</span>`;
+    setStatus(`selesai · ${items.length} hasil untuk "${kw}"`, false);
+  }catch(e){
+    els.results.innerHTML = `<div class="err">gagal cari: ${e.message}</div>`;
+    setStatus('error.', false);
+  }
+}
+els.qsBtn.addEventListener('click', quickSearchRun);
+els.qsInput.addEventListener('keydown', e => { if(e.key === 'Enter') quickSearchRun(); });
+
+function setSource(s){
+  source = s;
+  els.srcGithub.classList.toggle('active', s === 'github');
+  els.srcGitlab.classList.toggle('active', s === 'gitlab');
+  updateTerminal();
+}
+
+function showDetail(idx){
+  const item = currentItems[idx];
+  els.listView.style.display = 'none';
+  els.detailView.style.display = 'block';
+  els.carouselView.style.display = 'none';
+  els.compareView.style.display = 'none';
+  els.batchView.style.display = 'none';
+  window.scrollTo(0,0);
+
+  els.detailContent.innerHTML = `
+    <div class="detail-head">
+      <div class="detail-head-top">
+        <div>
+          <div class="detail-title"><span class="owner">${item.owner}/</span>${item.name}</div>
+          <div class="detail-desc">${item.description}</div>
+        </div>
+        <div class="head-actions">
+          <button class="bookmark-btn ${isSaved(item)?'active':''}" id="btnSaveDetail" title="simpan" style="width:38px;height:38px;font-size:17px;">${isSaved(item)?'★':'☆'}</button>
+          <a class="gh-link" href="${item.url}" target="_blank" rel="noopener">Buka di ${item.source==='github'?'GitHub':'GitLab'} ↗</a>
+          <button class="carousel-btn" id="btnOpenCarousel">🎬 Buka Carousel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-cell"><div class="stat-num">★ ${fmtNum(item.stars)}</div><div class="stat-label">Stars</div></div>
+      <div class="stat-cell"><div class="stat-num">⑂ ${fmtNum(item.forks)}</div><div class="stat-label">Forks</div></div>
+      <div class="stat-cell"><div class="stat-num">${item.openIssues ?? '—'}</div><div class="stat-label">Open Issues</div></div>
+      <div class="stat-cell"><div class="stat-num">${item.watchers ?? '—'}</div><div class="stat-label">Watchers</div></div>
+      <div class="stat-cell"><div class="stat-num">${item.license || '—'}</div><div class="stat-label">Lisensi</div></div>
+      <div class="stat-cell"><div class="stat-num">${fmtDate(item.created)}</div><div class="stat-label">Dibuat</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Aktivitas commit (mingguan)</div>
+      <div id="commitChartWrap"><div class="loading-line">memuat data aktivitas…</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Komposisi bahasa</div>
+      <div id="langWrap"><div class="loading-line">memuat data bahasa…</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Kontributor teratas</div>
+      <div id="contribWrap"><div class="loading-line">memuat kontributor…</div></div>
+    </div>
+
+    ${item.topics.length ? `
+    <div class="panel">
+      <div class="panel-title">Topics</div>
+      <div class="tags">${item.topics.map(t=>`<span class="tag diff-add">${t}</span>`).join('')}</div>
+    </div>` : ''}
+
+    <div class="panel">
+      <div class="panel-title">✍️ Caption siap pakai</div>
+      <div id="captionWrap"></div>
+    </div>
+  `;
+
+  renderCaptions(item);
+  document.getElementById('btnOpenCarousel').addEventListener('click', () => openCarousel(item));
+  document.getElementById('btnSaveDetail').addEventListener('click', (e) => {
+    toggleSaved(item);
+    e.target.classList.toggle('active', isSaved(item));
+    e.target.textContent = isSaved(item) ? '★' : '☆';
+  });
+
+  if(item.source === 'github') loadGithubDetail(item);
+  else loadGitlabDetail(item);
+}
+
+async function loadGithubDetail(item){
+  const base = `https://api.github.com/repos/${item.full_name}`;
+  fetch(`${base}/languages`).then(r=>r.ok?r.json():{}).then(langs=>{
+    const wrap = document.getElementById('langWrap');
+    if(!wrap) return;
+    const entries = Object.entries(langs);
+    if(!entries.length){ wrap.innerHTML = '<div class="note-line">data bahasa tidak tersedia.</div>'; return; }
+    const total = entries.reduce((s,[,v])=>s+v,0);
+    const bar = entries.map(([name,val])=>{ const pct = (val/total*100); return `<div style="width:${pct}%; background:${langColor(name)}"></div>`; }).join('');
+    const legend = entries.sort((a,b)=>b[1]-a[1]).map(([name,val])=>{ const pct = (val/total*100).toFixed(1); return `<div class="lang-legend-item"><span class="lang-dot" style="background:${langColor(name)}"></span><b>${name}</b> ${pct}%</div>`; }).join('');
+    wrap.innerHTML = `<div class="lang-bar">${bar}</div><div class="lang-legend">${legend}</div>`;
+  }).catch(()=>{ const w=document.getElementById('langWrap'); if(w) w.innerHTML = '<div class="note-line">gagal memuat data bahasa.</div>'; });
+
+  fetch(`${base}/contributors?per_page=6`).then(r=>r.ok?r.json():[]).then(list=>{
+    const wrap = document.getElementById('contribWrap');
+    if(!wrap) return;
+    if(!Array.isArray(list) || !list.length){ wrap.innerHTML = '<div class="note-line">data kontributor tidak tersedia.</div>'; return; }
+    wrap.innerHTML = `<div class="contrib-row">${list.map(c=>`
+      <div class="contrib"><img src="${c.avatar_url}" alt="${c.login}" loading="lazy">
+      <div><div class="contrib-name">${c.login}</div><div class="contrib-count">${c.contributions} commit</div></div></div>`).join('')}</div>`;
+  }).catch(()=>{ const w=document.getElementById('contribWrap'); if(w) w.innerHTML = '<div class="note-line">gagal memuat kontributor.</div>'; });
+
+  async function loadParticipation(retry){
+    try{
+      const res = await fetch(`${base}/stats/participation`);
+      if(res.status === 202 && !retry){
+        const w = document.getElementById('commitChartWrap');
+        if(w) w.innerHTML = '<div class="loading-line">GitHub lagi menghitung statistik, coba sebentar lagi…</div>';
+        setTimeout(()=>loadParticipation(true), 2500);
+        return;
+      }
+      if(!res.ok){ throw new Error('no data'); }
+      const data = await res.json();
+      const weeks = (data.all || []).slice(-26);
+      const wrap = document.getElementById('commitChartWrap');
+      if(!wrap) return;
+      if(!weeks.length || weeks.every(w=>w===0)){ wrap.innerHTML = '<div class="note-line">belum ada aktivitas commit tercatat.</div>'; return; }
+      const max = Math.max(...weeks, 1);
+      const bars = weeks.map(w => `<div class="commit-bar" style="height:${Math.max((w/max*100),3)}%" title="${w} commit"></div>`).join('');
+      wrap.innerHTML = `<div class="commit-chart">${bars}</div><div class="chart-caption"><span>26 minggu lalu</span><span>minggu ini</span></div>`;
+    }catch(e){
+      const w = document.getElementById('commitChartWrap');
+      if(w) w.innerHTML = '<div class="note-line">data aktivitas commit tidak tersedia untuk repo ini.</div>';
+    }
+  }
+  loadParticipation(false);
+}
+
+async function loadGitlabDetail(item){
+  const projId = item.id;
+  document.getElementById('commitChartWrap').innerHTML = '<div class="note-line">grafik aktivitas commit belum didukung untuk sumber GitLab di versi ini.</div>';
+
+  fetch(`https://gitlab.com/api/v4/projects/${projId}/languages`).then(r=>r.ok?r.json():{}).then(langs=>{
+    const wrap = document.getElementById('langWrap');
+    if(!wrap) return;
+    const entries = Object.entries(langs);
+    if(!entries.length){ wrap.innerHTML = '<div class="note-line">data bahasa tidak tersedia.</div>'; return; }
+    const bar = entries.map(([name,pct])=>`<div style="width:${pct}%; background:${langColor(name)}"></div>`).join('');
+    const legend = entries.sort((a,b)=>b[1]-a[1]).map(([name,pct])=>`<div class="lang-legend-item"><span class="lang-dot" style="background:${langColor(name)}"></span><b>${name}</b> ${pct}%</div>`).join('');
+    wrap.innerHTML = `<div class="lang-bar">${bar}</div><div class="lang-legend">${legend}</div>`;
+  }).catch(()=>{ const w=document.getElementById('langWrap'); if(w) w.innerHTML = '<div class="note-line">gagal memuat data bahasa.</div>'; });
+
+  fetch(`https://gitlab.com/api/v4/projects/${projId}/repository/contributors`).then(r=>r.ok?r.json():[]).then(list=>{
+    const wrap = document.getElementById('contribWrap');
+    if(!wrap) return;
+    if(!Array.isArray(list) || !list.length){ wrap.innerHTML = '<div class="note-line">data kontributor tidak tersedia.</div>'; return; }
+    const top = list.sort((a,b)=>b.commits-a.commits).slice(0,6);
+    wrap.innerHTML = `<div class="contrib-row">${top.map(c=>`
+      <div class="contrib"><div style="width:26px;height:26px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text-dim)">${(c.name||'?').charAt(0).toUpperCase()}</div>
+      <div><div class="contrib-name">${c.name}</div><div class="contrib-count">${c.commits} commit</div></div></div>`).join('')}</div>`;
+  }).catch(()=>{ const w=document.getElementById('contribWrap'); if(w) w.innerHTML = '<div class="note-line">gagal memuat kontributor.</div>'; });
+}
+
+function backToList(){
+  els.detailView.style.display = 'none';
+  els.compareView.style.display = 'none';
+  els.batchView.style.display = 'none';
+  els.listView.style.display = 'block';
+  window.scrollTo(0,0);
+  renderCompareBar();
+}
+
+els.srcGithub.addEventListener('click', ()=>setSource('github'));
+els.srcGitlab.addEventListener('click', ()=>setSource('gitlab'));
+els.run.addEventListener('click', run);
+els.reset.addEventListener('click', ()=>{
+  els.lang.value=''; els.since.value='7'; els.minStars.value='50'; els.sort.value='stars'; els.keyword.value='';
+  updateTerminal();
+});
+[els.lang, els.since, els.minStars, els.sort].forEach(el => el.addEventListener('change', updateTerminal));
+els.keyword.addEventListener('input', updateTerminal);
+els.btnBack.addEventListener('click', backToList);
+
+// ================= CAROUSEL / VIDEO BUILDER =================
+
+let csScenes = [];
+let csCurrentItem = null;
+let csPlaying = false;
+let csTimers = [];
+let unsplashApiKey = '';
+
+const SCENE_TYPE_META = [
+  { key:'hook', label:'Hook' },
+  { key:'stat', label:'Statistik' },
+  { key:'chips', label:'Fitur' },
+  { key:'terminal', label:'Terminal' },
+  { key:'card', label:'Card' },
+  { key:'cta', label:'CTA' },
+];
+
+function emptyCsScene(type){
+  const base = { type, duration:3000, bgColor:'', bgImage:'', iconUrl:'' };
+  switch(type){
+    case 'hook': return { ...base, eyebrow:'', lines:['Baris satu','Baris dua','Baris tiga'] };
+    case 'stat': return { ...base, statValue:1000, statLabel:'label statistik' };
+    case 'chips': return { ...base, title:'Judul singkat', chips:['item 1','item 2','item 3'] };
+    case 'terminal': return { ...base, eyebrow:'cara pakai', prompt:'contoh perintah di sini' };
+    case 'card': return { ...base, eyebrow:'info', rows:['LABEL: isi 1','LABEL: isi 2'] };
+    case 'cta': return { ...base, eyebrow:'install sekarang', ctaCode:'npm install ...', ctaSub:'sub teks' };
+    default: return base;
+  }
+}
+
+els.unsplashKeyInput.addEventListener('input', ()=>{ unsplashApiKey = els.unsplashKeyInput.value.trim(); });
+
+function isColorDark(hex){
+  if(!hex) return true;
+  const c = hex.replace('#','');
+  if(c.length < 6) return true;
+  const r = parseInt(c.substr(0,2),16), g=parseInt(c.substr(2,2),16), b=parseInt(c.substr(4,2),16);
+  const yiq = (r*299+g*587+b*114)/1000;
+  return yiq < 150;
+}
+
+function generateScenesFromItem(item){
+  const nameLine = item.name.length > 16 ? item.name.slice(0,16)+'…' : item.name;
+  return [
+    {
+      type:'hook', duration:3000, eyebrow:'lagi naik daun',
+      lines:['Nemuin repo baru:', nameLine, item.language ? `stack: ${item.language}` : 'worth dicoba']
+    },
+    {
+      type:'stat', duration:3000,
+      statValue: item.stars || 0, statLabel:'bintang di ' + (item.source==='github'?'GitHub':'GitLab')
+    },
+    {
+      type:'chips', duration:3200,
+      title:'Kenapa worth dicoba:',
+      chips: (item.topics && item.topics.length ? item.topics.slice(0,4) : [item.language, fmtNum(item.forks)+' forks', item.license, 'open source']).filter(Boolean)
+    },
+    {
+      type:'terminal', duration:3500,
+      eyebrow:'cobain sekarang', prompt: `git clone ${item.full_name}`
+    },
+    {
+      type:'card', duration:3800,
+      eyebrow:'info singkat',
+      rows:[
+        `FORKS: ${fmtNum(item.forks)}`,
+        `ISSUES: ${item.openIssues ?? '-'}`,
+        `LISENSI: ${item.license || '-'}`,
+        `DIBUAT: ${fmtDate(item.created)}`
+      ]
+    },
+    {
+      type:'cta', duration:4000,
+      eyebrow:'lihat & bintangin',
+      ctaCode: item.url,
+      ctaSub: item.full_name
+    }
+  ];
+}
+
+function openCarousel(item){
+  csCurrentItem = item;
+  csScenes = generateScenesFromItem(item);
+  els.detailView.style.display = 'none';
+  els.carouselView.style.display = 'block';
+  window.scrollTo(0,0);
+  renderAddRow();
+  renderEditor();
+  buildProgressSegs();
+  stopCarouselPlay();
+  renderCsScene(0);
+}
+
+function closeCarousel(){
+  stopCarouselPlay();
+  els.carouselView.style.display = 'none';
+  els.detailView.style.display = 'block';
+  window.scrollTo(0,0);
+}
+els.btnBackFromCarousel.addEventListener('click', closeCarousel);
+
+function renderAddRow(){
+  els.csAddRow.innerHTML = `<div class="cs-add-label">+ tambah scene</div><div class="cs-add-btns">` +
+    SCENE_TYPE_META.map(t=>`<button class="cs-add-btn" data-type="${t.key}">+ ${t.label}</button>`).join('') + `</div>`;
+  els.csAddRow.querySelectorAll('.cs-add-btn').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      csScenes.push(emptyCsScene(b.dataset.type));
+      renderEditor(); buildProgressSegs(); renderCsScene(csScenes.length-1);
+    });
+  });
+}
+
+function addSceneAfter(idx, type){
+  csScenes.splice(idx+1, 0, emptyCsScene(type));
+  renderEditor(); buildProgressSegs(); renderCsScene(idx+1);
+}
+function removeCsScene(idx){
+  if(csScenes.length <= 1){ return; }
+  csScenes.splice(idx,1);
+  renderEditor(); buildProgressSegs(); renderCsScene(Math.max(0, idx-1));
+}
+function moveCsScene(idx, dir){
+  const to = idx + dir;
+  if(to < 0 || to >= csScenes.length) return;
+  [csScenes[idx], csScenes[to]] = [csScenes[to], csScenes[idx]];
+  renderEditor(); buildProgressSegs(); renderCsScene(to);
+}
+
+function renderEditor(){
+  els.csSceneList.innerHTML = csScenes.map((s, i) => sceneEditorHtml(s, i)).join('');
+
+  els.csSceneList.querySelectorAll('[data-field]').forEach(inputEl=>{
+    const evt = inputEl.type === 'color' ? 'input' : 'input';
+    inputEl.addEventListener(evt, ()=>{
+      const idx = parseInt(inputEl.dataset.idx);
+      const field = inputEl.dataset.field;
+      const scene = csScenes[idx];
+      if(field === 'duration'){ scene.duration = Math.max(500, parseFloat(inputEl.value||'1')*1000); }
+      else if(field.startsWith('line')){ const li = parseInt(field.replace('line','')); scene.lines[li] = inputEl.value; }
+      else if(field.startsWith('chip')){ const ci = parseInt(field.replace('chip','')); scene.chips[ci] = inputEl.value; }
+      else if(field.startsWith('row')){ const ri = parseInt(field.replace('row','')); scene.rows[ri] = inputEl.value; }
+      else if(field === 'bgImage'){ scene.bgImage = inputEl.value; }
+      else { scene[field] = inputEl.value; }
+      renderCsScene(idx);
+    });
+  });
+
+  els.csSceneList.querySelectorAll('[data-act]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const idx = parseInt(btn.dataset.idx);
+      const act = btn.dataset.act;
+      if(act==='up') moveCsScene(idx,-1);
+      else if(act==='down') moveCsScene(idx,1);
+      else if(act==='del') removeCsScene(idx);
+      else if(act==='clearbg'){ csScenes[idx].bgImage=''; renderEditor(); renderCsScene(idx); }
+      else if(act==='clearicon'){ csScenes[idx].iconUrl=''; renderEditor(); renderCsScene(idx); }
+    });
+  });
+
+  els.csSceneList.querySelectorAll('.icon-search-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const idx = parseInt(btn.dataset.idx);
+      const input = els.csSceneList.querySelector(`.icon-search-input[data-idx="${idx}"]`);
+      const resultsEl = document.getElementById(`iconResults-${idx}`);
+      if(!input.value.trim()) return;
+      resultsEl.innerHTML = '<div class="note-line">mencari ikon…</div>';
+      try{
+        const res = await fetch(`https://api.iconify.design/search?query=${encodeURIComponent(input.value.trim())}&limit=24`);
+        const data = await res.json();
+        const icons = data.icons || [];
+        if(!icons.length){ resultsEl.innerHTML = '<div class="note-line">ikon tidak ditemukan.</div>'; return; }
+        resultsEl.innerHTML = icons.map(ic => `<button class="icon-pick" data-idx="${idx}" data-icon="${ic}"><img src="https://api.iconify.design/${ic.replace(':','/')}.svg?color=white" loading="lazy"></button>`).join('');
+        resultsEl.querySelectorAll('.icon-pick').forEach(pk=>{
+          pk.addEventListener('click', ()=>{
+            const i2 = parseInt(pk.dataset.idx);
+            csScenes[i2].iconUrl = `https://api.iconify.design/${pk.dataset.icon.replace(':','/')}.svg?color=white`;
+            renderEditor(); renderCsScene(i2);
+          });
+        });
+      }catch(e){ resultsEl.innerHTML = '<div class="note-line">gagal mencari ikon (cek koneksi).</div>'; }
+    });
+  });
+
+  els.csSceneList.querySelectorAll('.bg-random-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const idx = parseInt(btn.dataset.idx);
+      csScenes[idx].bgImage = `https://picsum.photos/500/900?random=${Date.now()}`;
+      renderEditor(); renderCsScene(idx);
+    });
+  });
+
+  els.csSceneList.querySelectorAll('.bg-search-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const idx = parseInt(btn.dataset.idx);
+      const input = els.csSceneList.querySelector(`.bg-search-input[data-idx="${idx}"]`);
+      const resultsEl = document.getElementById(`bgResults-${idx}`);
+      if(!unsplashApiKey){ resultsEl.innerHTML = '<div class="note-line">isi Unsplash Access Key dulu di atas (gratis) buat cari foto by keyword. Atau pakai tombol "Acak".</div>'; return; }
+      if(!input.value.trim()) return;
+      resultsEl.innerHTML = '<div class="note-line">mencari foto…</div>';
+      try{
+        const res = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(input.value.trim())}&per_page=8&client_id=${encodeURIComponent(unsplashApiKey)}`);
+        if(!res.ok) throw new Error('unsplash error '+res.status);
+        const data = await res.json();
+        const photos = data.results || [];
+        if(!photos.length){ resultsEl.innerHTML = '<div class="note-line">foto tidak ditemukan.</div>'; return; }
+        resultsEl.innerHTML = photos.map(p=>`<div class="bg-thumb" data-idx="${idx}" data-full="${p.urls.regular}" style="background-image:url(${p.urls.thumb})"></div>`).join('');
+        resultsEl.querySelectorAll('.bg-thumb').forEach(th=>{
+          th.addEventListener('click', ()=>{
+            const i2 = parseInt(th.dataset.idx);
+            csScenes[i2].bgImage = th.dataset.full;
+            renderEditor(); renderCsScene(i2);
+          });
+        });
+      }catch(e){ resultsEl.innerHTML = '<div class="note-line">gagal cari foto — cek Access Key.</div>'; }
+    });
+  });
+}
+
+function sceneEditorHtml(s, i){
+  const dur = (s.duration/1000).toFixed(1);
+  let fields = '';
+  if(s.type==='hook'){
+    fields = `<div class="ce-row"><input data-idx="${i}" data-field="eyebrow" value="${escAttr(s.eyebrow||'')}" placeholder="eyebrow"></div>` +
+      s.lines.map((l,li)=>`<div class="ce-row"><input data-idx="${i}" data-field="line${li}" value="${escAttr(l)}"></div>`).join('');
+  } else if(s.type==='stat'){
+    fields = `<div class="ce-row"><input type="number" data-idx="${i}" data-field="statValue" value="${s.statValue}"><input data-idx="${i}" data-field="statLabel" value="${escAttr(s.statLabel)}"></div>`;
+  } else if(s.type==='chips'){
+    fields = `<div class="ce-row"><input data-idx="${i}" data-field="title" value="${escAttr(s.title)}"></div>` +
+      s.chips.map((c,ci)=>`<div class="ce-row"><input data-idx="${i}" data-field="chip${ci}" value="${escAttr(c)}"></div>`).join('');
+  } else if(s.type==='terminal'){
+    fields = `<div class="ce-row"><input data-idx="${i}" data-field="eyebrow" value="${escAttr(s.eyebrow||'')}" placeholder="eyebrow"></div>
+      <div class="ce-row"><input data-idx="${i}" data-field="prompt" value="${escAttr(s.prompt)}"></div>`;
+  } else if(s.type==='card'){
+    fields = `<div class="ce-row"><input data-idx="${i}" data-field="eyebrow" value="${escAttr(s.eyebrow||'')}" placeholder="eyebrow"></div>` +
+      s.rows.map((r,ri)=>`<div class="ce-row"><input data-idx="${i}" data-field="row${ri}" value="${escAttr(r)}"></div>`).join('');
+  } else if(s.type==='cta'){
+    fields = `<div class="ce-row"><input data-idx="${i}" data-field="eyebrow" value="${escAttr(s.eyebrow||'')}" placeholder="eyebrow"></div>
+      <div class="ce-row"><input data-idx="${i}" data-field="ctaCode" value="${escAttr(s.ctaCode)}"></div>
+      <div class="ce-row"><input data-idx="${i}" data-field="ctaSub" value="${escAttr(s.ctaSub)}"></div>`;
+  }
+
+  const iconBlock = `
+    <div class="ce-asset-row">
+      <input class="icon-search-input" data-idx="${i}" placeholder="cari ikon (mis: rocket, star)">
+      <button class="btn icon-search-btn" data-idx="${i}">🔎 Ikon</button>
+    </div>
+    ${s.iconUrl ? `<div class="icon-selected"><img class="icon-preview" src="${s.iconUrl}"> ikon terpasang <button class="ce-mini-btn ce-del" data-act="clearicon" data-idx="${i}">✕</button></div>` : ''}
+    <div id="iconResults-${i}" class="icon-results"></div>`;
+
+  const bgBlock = `
+    <div class="ce-asset-row">
+      <input class="bg-search-input" data-idx="${i}" placeholder="cari foto latar by keyword (perlu Unsplash key)">
+      <button class="btn bg-search-btn" data-idx="${i}">🔎 Foto</button>
+      <button class="btn bg-random-btn" data-idx="${i}">🎲 Acak</button>
+    </div>
+    <div id="bgResults-${i}" class="bg-thumb-grid"></div>
+    <div class="ce-row"><input data-idx="${i}" data-field="bgImage" value="${escAttr(s.bgImage||'')}" placeholder="atau tempel URL gambar langsung"></div>
+    ${s.bgImage ? `<div class="icon-selected">latar gambar terpasang <button class="ce-mini-btn ce-del" data-act="clearbg" data-idx="${i}">✕ hapus</button></div>` : ''}
+    <div class="ce-color-row">
+      <label>Warna latar</label>
+      <input type="color" data-idx="${i}" data-field="bgColor" value="${s.bgColor || '#0D1117'}">
+      <span style="font-size:11px;color:var(--text-faint);font-family:'JetBrains Mono',monospace;">(dipakai kalau tidak ada gambar latar)</span>
+    </div>`;
+
+  return `<div class="panel">
+    <div class="ce-scene-label">
+      <span class="name">${i+1}. ${s.type}</span>
+      <span class="ce-actions">
+        <button class="ce-mini-btn" data-act="up" data-idx="${i}" title="naik">▲</button>
+        <button class="ce-mini-btn" data-act="down" data-idx="${i}" title="turun">▼</button>
+        <button class="ce-mini-btn ce-del" data-act="del" data-idx="${i}" title="hapus">✕</button>
+      </span>
+    </div>
+    <div class="ce-dur-row"><span>durasi</span><input class="dur-input" type="number" step="0.1" data-idx="${i}" data-field="duration" value="${dur}"><span>s</span></div>
+    ${fields}
+    ${iconBlock}
+    ${bgBlock}
+  </div>`;
+}
+
+function escAttr(str){ return String(str==null?'':str).replace(/"/g,'&quot;'); }
+
+function buildProgressSegs(){
+  els.csProgress.innerHTML = csScenes.map(()=>'<div class="seg"><div class="fill"></div></div>').join('');
+}
+
+function scenePhoneHtml(s){
+  const iconHtml = s.iconUrl ? `<img class="ps-icon" src="${s.iconUrl}">` : '';
+  if(s.type==='hook'){
+    return `${iconHtml}<div class="ps-eyebrow">${s.eyebrow||''}</div><div class="ps-h1">${s.lines.map((l,i)=>`<span class="${i===1?'accent':''}">${l}</span>`).join('')}</div>`;
+  }
+  if(s.type==='stat'){
+    return `${iconHtml}<div class="ps-stat" data-stat="${s.statValue}">0</div><div class="ps-stat-label">${s.statLabel}</div>`;
+  }
+  if(s.type==='chips'){
+    return `${iconHtml}<div class="ps-h1" style="font-size:18px">${s.title}</div><div class="ps-chips">${s.chips.map(c=>`<span class="ps-chip">${c}</span>`).join('')}</div>`;
+  }
+  if(s.type==='terminal'){
+    return `${iconHtml}<div class="ps-eyebrow">${s.eyebrow||''}</div><div class="ps-term"><div class="dots"><span></span><span></span><span></span></div><div class="prompt" data-typed="${escAttr(s.prompt)}"></div></div>`;
+  }
+  if(s.type==='card'){
+    return `${iconHtml}<div class="ps-eyebrow">${s.eyebrow||''}</div><div class="ps-card">${s.rows.map(r=>{const idx=r.indexOf(':');const label=idx>-1?r.slice(0,idx):r;const rest=idx>-1?r.slice(idx+1):'';return `<div><b>${label}:</b>${rest}</div>`;}).join('')}</div>`;
+  }
+  if(s.type==='cta'){
+    return `${iconHtml}<div class="ps-eyebrow">${s.eyebrow||''}</div><div class="ps-cta-code">${s.ctaCode}</div><div class="ps-cta-sub">${s.ctaSub}</div>`;
+  }
+  return '';
+}
+
+function applySceneBg(div, s){
+  let dark = true;
+  if(s.bgImage){
+    div.style.backgroundImage = `linear-gradient(rgba(0,0,0,.4),rgba(0,0,0,.4)), url(${s.bgImage})`;
+    div.style.backgroundSize = 'cover';
+    div.style.backgroundPosition = 'center';
+    div.style.background = '';
+    dark = true;
+  } else if(s.bgColor){
+    div.style.backgroundImage = '';
+    div.style.background = s.bgColor;
+    dark = isColorDark(s.bgColor);
+  } else {
+    div.style.backgroundImage = '';
+    div.style.background = '';
+    dark = true;
+  }
+  div.classList.toggle('light-bg', !dark);
+}
+
+function renderCsScene(idx){
+  els.csSceneRoot.innerHTML = '';
+  const s = csScenes[idx];
+  if(!s) return;
+  const div = document.createElement('div');
+  div.className = 'phone-scene active';
+  applySceneBg(div, s);
+  div.innerHTML = scenePhoneHtml(s);
+  els.csSceneRoot.appendChild(div);
+  const tag = document.createElement('div');
+  tag.className = 'phone-tag';
+  tag.textContent = csCurrentItem ? csCurrentItem.full_name : '';
+  div.appendChild(tag);
+
+  const statEl = div.querySelector('[data-stat]');
+  if(statEl){ countUpEl(statEl, parseInt(statEl.dataset.stat||'0'), Math.max(500, s.duration-500)); }
+  const typedEl = div.querySelector('[data-typed]');
+  if(typedEl){ typeTextEl(typedEl, typedEl.dataset.typed, Math.max(18, s.duration / (typedEl.dataset.typed.length||1) * 0.55)); }
+}
+
+function countUpEl(el, target, duration){
+  const start = performance.now();
+  function step(now){
+    const p = Math.min((now-start)/duration, 1);
+    el.textContent = Math.floor(p*target).toLocaleString('id-ID');
+    if(p<1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+function typeTextEl(el, text, speed){
+  let i=0;
+  const iv = setInterval(()=>{
+    el.textContent = text.slice(0,i) + (i%2===0?'▌':'');
+    i++;
+    if(i>text.length){ clearInterval(iv); el.textContent = text; }
+  }, speed);
+}
+
+function clearCsTimers(){ csTimers.forEach(t=>clearTimeout(t)); csTimers=[]; }
+
+function playCsFrom(idx){
+  if(idx >= csScenes.length){ csPlaying=false; els.csPlayBtn.textContent='▶ Putar'; return; }
+  const fills = els.csProgress.querySelectorAll('.fill');
+  fills.forEach((f,i)=>{ f.style.transition='none'; f.style.width = i<idx?'100%':'0%'; });
+  renderCsScene(idx);
+  requestAnimationFrame(()=>{
+    fills[idx].style.transition = `width ${csScenes[idx].duration}ms linear`;
+    requestAnimationFrame(()=>{ fills[idx].style.width='100%'; });
+  });
+  csTimers.push(setTimeout(()=>playCsFrom(idx+1), csScenes[idx].duration));
+}
+
+function stopCarouselPlay(){
+  csPlaying = false;
+  clearCsTimers();
+  els.csPlayBtn.textContent = '▶ Putar';
+  const fills = els.csProgress.querySelectorAll('.fill');
+  fills.forEach(f=>{ f.style.transition='none'; f.style.width='0%'; });
+}
+
+els.csPlayBtn.addEventListener('click', ()=>{
+  if(csPlaying){ stopCarouselPlay(); renderCsScene(0); return; }
+  csPlaying = true;
+  els.csPlayBtn.textContent = '⏸ Stop';
+  playCsFrom(0);
+});
+
+function goFullscreen(){
+  const el = els.csPhone;
+  if(el.requestFullscreen) el.requestFullscreen();
+  else if(el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+}
+els.csFullscreenBtn.addEventListener('click', goFullscreen);
+els.csFsBtn.addEventListener('click', goFullscreen);
+
+els.csDownloadBtn.addEventListener('click', ()=>{
+  const html = buildStandaloneHtml(csScenes, csCurrentItem);
+  const blob = new Blob([html], {type:'text/html'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (csCurrentItem ? csCurrentItem.name : 'carousel') + '-carousel.html';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+function buildStandaloneHtml(scenes, item){
+  const scenesJson = JSON.stringify(scenes).replace(/</g,'\\u003c');
+  const tag = item ? item.full_name : '';
+  return `<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><title>${tag} — carousel</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;height:100%;background:#06070A;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;}
+.phone{position:relative;width:390px;height:100%;max-height:844px;aspect-ratio:9/16;background:#0D1117;overflow:hidden;border-radius:28px;box-shadow:0 30px 80px rgba(0,0,0,.6);}
+.progress{position:absolute;top:14px;left:14px;right:14px;display:flex;gap:5px;z-index:50;}
+.progress .seg{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.15);overflow:hidden;}
+.progress .seg .fill{height:100%;width:0%;background:#fff;}
+.scene{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;padding:52px 30px 70px;text-align:center;}
+.scene.active{display:flex;}
+.eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#46C161;font-weight:700;margin-bottom:12px;}
+h1{font-weight:800;font-size:26px;line-height:1.2;color:#F5F7FA;margin:0;}
+h1 span{display:block;}
+h1 .accent{color:#6CB2FF;}
+.stat{font-weight:800;font-size:56px;color:#F5F7FA;line-height:1;}
+.stat-label{font-size:15px;font-weight:600;color:#ABB4BF;margin-top:6px;}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:280px;margin-top:6px;}
+.chip{font-size:12px;border:1.5px solid #46C161;color:#46C161;border-radius:999px;padding:6px 12px;}
+.term,.card{width:100%;max-width:260px;background:rgba(0,0,0,.5);border-radius:14px;padding:16px;text-align:left;}
+.term .dots span{display:inline-block;width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.2);margin-right:5px;}
+.term .prompt{font-size:13px;color:#46C161;margin-top:8px;}
+.card{font-size:11.5px;line-height:1.7;color:#ABB4BF;}
+.card b{color:#E3A83B;}
+.cta-code{background:#122b17;border:1px solid #46C161;color:#46C161;padding:12px 16px;border-radius:10px;font-size:12.5px;word-break:break-all;}
+.cta-sub{font-size:14px;color:#ABB4BF;margin-top:8px;}
+.tag{position:absolute;bottom:14px;left:0;right:0;text-align:center;font-size:10px;color:rgba(255,255,255,.25);}
+.replay{position:absolute;bottom:-40px;left:0;right:0;text-align:center;color:#808B98;font-size:12px;}
+.ico{width:22px;height:22px;margin-bottom:8px;}
+.fsbtn{position:absolute;top:10px;right:10px;z-index:60;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.25);color:#fff;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:13px;}
+.phone:fullscreen{width:100vw;height:100vh;max-height:none;border-radius:0;}
+.phone:-webkit-full-screen{width:100vw;height:100vh;max-height:none;border-radius:0;}
+.scene.light h1,.scene.light .stat,.scene.light .stat-label,.scene.light .cta-sub{color:#12161D;}
+.scene.light .eyebrow{color:#1c6b33;}
+.scene.light .chip{border-color:#1c6b33;color:#1c6b33;}
+.scene.light .term,.scene.light .card{background:rgba(255,255,255,.6);color:#12161D;}
+.scene.light .card b{color:#8a5a00;}
+.scene.light .cta-code{background:rgba(255,255,255,.6);color:#12161D;border-color:#1c6b33;}
+.scene.light .tag{color:rgba(0,0,0,.3);}
+</style></head><body>
+<div style="display:flex;flex-direction:column;align-items:center;">
+<div class="phone" id="phone"><button class="fsbtn" id="fsbtn">⛶</button><div class="progress" id="progress"></div><div id="root"></div></div>
+<div class="replay" id="replay">tap untuk ulang</div>
+</div>
+<script>
+const SCENES = ${scenesJson};
+const TAG = ${JSON.stringify(tag)};
+const root = document.getElementById('root');
+const progressWrap = document.getElementById('progress');
+SCENES.forEach(()=>{ const seg=document.createElement('div'); seg.className='seg'; seg.innerHTML='<div class="fill"></div>'; progressWrap.appendChild(seg); });
+const fills = document.querySelectorAll('.progress .fill');
+
+document.getElementById('fsbtn').addEventListener('click', ()=>{
+  const el = document.getElementById('phone');
+  if(el.requestFullscreen) el.requestFullscreen();
+  else if(el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+});
+
+function isDarkColor(hex){
+  if(!hex) return true;
+  const c = hex.replace('#','');
+  if(c.length < 6) return true;
+  const r=parseInt(c.substr(0,2),16), g=parseInt(c.substr(2,2),16), b=parseInt(c.substr(4,2),16);
+  return ((r*299+g*587+b*114)/1000) < 150;
+}
+
+function html(s){
+  const ico = s.iconUrl ? '<img class="ico" src="'+s.iconUrl+'">' : '';
+  if(s.type==='hook') return ico+'<div class="eyebrow">'+(s.eyebrow||'')+'</div><h1>'+s.lines.map((l,i)=>'<span'+(i===1?' class="accent"':'')+'>'+l+'</span>').join('')+'</h1>';
+  if(s.type==='stat') return ico+'<div class="stat" id="statv">0</div><div class="stat-label">'+s.statLabel+'</div>';
+  if(s.type==='chips') return ico+'<h1 style="font-size:20px">'+s.title+'</h1><div class="chips">'+s.chips.map(c=>'<span class="chip">'+c+'</span>').join('')+'</div>';
+  if(s.type==='terminal') return ico+'<div class="eyebrow">'+(s.eyebrow||'')+'</div><div class="term"><div class="dots"><span></span><span></span><span></span></div><div class="prompt" id="typed"></div></div>';
+  if(s.type==='card') return ico+'<div class="eyebrow">'+(s.eyebrow||'')+'</div><div class="card">'+s.rows.map(r=>{const i=r.indexOf(':');const l=i>-1?r.slice(0,i):r;const rest=i>-1?r.slice(i+1):'';return '<div><b>'+l+':</b>'+rest+'</div>';}).join('')+'</div>';
+  if(s.type==='cta') return ico+'<div class="eyebrow">'+(s.eyebrow||'')+'</div><div class="cta-code">'+s.ctaCode+'</div><div class="cta-sub">'+s.ctaSub+'</div>';
+  return '';
+}
+function typeText(el,text,speed,cb){ let i=0; const iv=setInterval(()=>{ el.textContent=text.slice(0,i)+(i%2===0?'▌':''); i++; if(i>text.length){clearInterval(iv); el.textContent=text; if(cb)cb();} }, speed); }
+function countUp(el,target,duration){ const start=performance.now(); function step(now){ const p=Math.min((now-start)/duration,1); el.textContent=Math.floor(p*target).toLocaleString('id-ID'); if(p<1) requestAnimationFrame(step);} requestAnimationFrame(step); }
+
+let timers=[];
+function clearTimers(){ timers.forEach(t=>clearTimeout(t)); timers=[]; }
+function playScene(idx){
+  if(idx>=SCENES.length){ document.getElementById('replay').style.display='block'; return; }
+  fills.forEach((f,i)=>{ f.style.transition='none'; f.style.width=i<idx?'100%':'0%'; });
+  const s = SCENES[idx];
+  const div = document.createElement('div');
+  let dark = true;
+  if(s.bgImage){ div.style.backgroundImage = 'linear-gradient(rgba(0,0,0,.4),rgba(0,0,0,.4)), url('+s.bgImage+')'; div.style.backgroundSize='cover'; div.style.backgroundPosition='center'; dark=true; }
+  else if(s.bgColor){ div.style.background = s.bgColor; dark = isDarkColor(s.bgColor); }
+  div.className='scene active' + (dark ? '' : ' light');
+  div.innerHTML = html(s);
+  const tagEl = document.createElement('div'); tagEl.className='tag'; tagEl.textContent=TAG; div.appendChild(tagEl);
+  root.innerHTML=''; root.appendChild(div);
+  requestAnimationFrame(()=>{ fills[idx].style.transition = s.duration+'ms linear'; requestAnimationFrame(()=>{ fills[idx].style.width='100%'; }); });
+  if(s.type==='stat'){ countUp(document.getElementById('statv'), s.statValue, s.duration-500); }
+  if(s.type==='terminal'){ typeText(document.getElementById('typed'), s.prompt, Math.max(20, s.duration/s.prompt.length*0.55)); }
+  timers.push(setTimeout(()=>playScene(idx+1), s.duration));
+}
+function start(){ clearTimers(); document.getElementById('replay').style.display='none'; fills.forEach(f=>{f.style.transition='none'; f.style.width='0%';}); timers.push(setTimeout(()=>playScene(0),150)); }
+document.getElementById('replay').addEventListener('click', start);
+document.getElementById('phone').addEventListener('click', (e)=>{ if(e.target.id==='fsbtn') return; if(document.getElementById('replay').style.display==='block') start(); });
+start();
+<\/script>
+</body></html>`;
+}
+
+// ================= CAPTION / HOOK GENERATOR =================
+function buildCaptions(item){
+  const hashLang = (item.language||'coding').replace(/[^a-zA-Z0-9]/g,'').toLowerCase();
+  const topicTags = item.topics.slice(0,3).map(t=>'#'+t.replace(/[^a-zA-Z0-9]/g,'')).join(' ');
+  return [
+    {
+      label: 'Hook langsung',
+      text: `"${item.name}" baru aja tembus ${fmtNum(item.stars)} ⭐ di GitHub.\n\n${item.description}\n\n🔗 ${item.full_name}\n\n#coding #github #opensource #devtools #${hashLang} ${topicTags}`.trim()
+    },
+    {
+      label: 'Listicle',
+      text: `3 alasan cek "${item.name}" minggu ini:\n\n1️⃣ ${fmtNum(item.stars)} stars & terus naik\n2️⃣ stack: ${item.language || 'multi-stack'}\n3️⃣ ${item.topics.slice(0,2).join(', ') || 'open source, siap pakai'}\n\ngit clone ${item.full_name}\n\n#programming #github #devtools ${topicTags}`.trim()
+    },
+    {
+      label: 'Pertanyaan / engagement',
+      text: `Masih belum tau "${item.name}"?\n\n${item.description}\n\n⭐ ${fmtNum(item.stars)} · ⑂ ${fmtNum(item.forks)} · 📜 ${item.license || 'open source'}\n\nCoba & share pendapatmu di komen 👇\n\n#devtools #github #${hashLang}`.trim()
+    }
+  ];
+}
+
+function copyToClipboard(text, btn){
+  const done = () => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Disalin';
+    btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent = orig; btn.classList.remove('copied'); }, 1600);
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done).catch(()=>fallbackCopy(text, done));
+  } else {
+    fallbackCopy(text, done);
+  }
+}
+function fallbackCopy(text, done){
+  try{
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    done();
+  }catch(e){}
+}
+
+function renderCaptions(item){
+  const wrap = document.getElementById('captionWrap');
+  if(!wrap) return;
+  const captions = buildCaptions(item);
+  wrap.innerHTML = captions.map((c,i) => `
+    <div class="caption-card">
+      <div class="caption-label"><span>${c.label}</span><button class="copy-btn" data-cap="${i}">📋 Copy</button></div>
+      <div class="caption-text">${c.text.replace(/</g,'&lt;')}</div>
+    </div>
+  `).join('');
+  wrap.querySelectorAll('[data-cap]').forEach(btn=>{
+    btn.addEventListener('click', ()=> copyToClipboard(captions[parseInt(btn.dataset.cap)].text, btn));
+  });
+}
+
+// ================= COMPARE (vs) =================
+let compareSelection = [];
+
+function isComparing(item){
+  return compareSelection.some(s => s.full_name === item.full_name && s.source === item.source);
+}
+function toggleCompare(item){
+  if(isComparing(item)){
+    compareSelection = compareSelection.filter(s => !(s.full_name === item.full_name && s.source === item.source));
+  } else {
+    if(compareSelection.length >= 2) compareSelection.shift();
+    compareSelection.push(item);
+  }
+  renderCompareBar();
+}
+function renderCompareBar(){
+  els.compareBar.classList.toggle('show', compareSelection.length > 0);
+  els.compareBarItems.innerHTML = compareSelection.map(it => `<span>${it.owner}/${it.name}</span>`).join('') || '<span style="opacity:.5">belum ada dipilih</span>';
+  els.compareGoBtn.disabled = compareSelection.length !== 2;
+}
+els.compareClearBtn.addEventListener('click', ()=>{ compareSelection = []; renderCompareBar(); render(currentItems); });
+els.compareGoBtn.addEventListener('click', ()=>{ if(compareSelection.length===2) openCompareView(compareSelection[0], compareSelection[1]); });
+els.btnBackFromCompare.addEventListener('click', ()=>{
+  els.compareView.style.display = 'none';
+  els.listView.style.display = 'block';
+  window.scrollTo(0,0);
+});
+
+function compareCol(item, other, key, isHigherBetter){
+  const a = item[key], b = other[key];
+  const win = (typeof a === 'number' && typeof b === 'number' && isHigherBetter !== undefined)
+    ? (isHigherBetter ? a > b : a < b) : false;
+  return win;
+}
+
+function openCompareView(a, b){
+  els.listView.style.display = 'none';
+  els.detailView.style.display = 'none';
+  els.compareView.style.display = 'block';
+  window.scrollTo(0,0);
+
+  const col = (item, other) => `
+    <div class="compare-col">
+      <div class="compare-name">${item.owner}/${item.name}</div>
+      <div class="compare-desc">${item.description}</div>
+      <div class="compare-row"><span class="lbl">Stars</span><span class="val ${(item.stars||0)>(other.stars||0)?'win':''}">★ ${fmtNum(item.stars)}</span></div>
+      <div class="compare-row"><span class="lbl">Forks</span><span class="val ${(item.forks||0)>(other.forks||0)?'win':''}">⑂ ${fmtNum(item.forks)}</span></div>
+      <div class="compare-row"><span class="lbl">Open Issues</span><span class="val ${(item.openIssues||0)<(other.openIssues||0)?'win':''}">${item.openIssues ?? '—'}</span></div>
+      <div class="compare-row"><span class="lbl">Bahasa</span><span class="val">${item.language || '—'}</span></div>
+      <div class="compare-row"><span class="lbl">Lisensi</span><span class="val">${item.license || '—'}</span></div>
+      <div class="compare-row"><span class="lbl">Dibuat</span><span class="val">${fmtDate(item.created)}</span></div>
+      <div class="compare-row"><span class="lbl">Sumber</span><span class="val">${item.source==='github'?'GitHub':'GitLab'}</span></div>
+      <a class="gh-link" style="margin-top:14px; justify-content:center;" href="${item.url}" target="_blank" rel="noopener">Buka ↗</a>
+    </div>`;
+
+  els.compareContent.innerHTML = `<div class="compare-grid">${col(a,b)}<div class="compare-vs">VS</div>${col(b,a)}</div>`;
+}
+
+// ================= BATCH CAROUSEL =================
+els.btnOpenBatch.addEventListener('click', openBatchView);
+els.btnBackFromBatch.addEventListener('click', ()=>{
+  els.batchView.style.display = 'none';
+  els.listView.style.display = 'block';
+  window.scrollTo(0,0);
+});
+
+let batchChecked = {};
+
+function openBatchView(){
+  els.listView.style.display = 'none';
+  els.batchView.style.display = 'block';
+  window.scrollTo(0,0);
+  const saved = getSaved();
+  batchChecked = {};
+  saved.forEach((it,i) => batchChecked[i] = true);
+  renderBatchList(saved);
+}
+
+function renderBatchList(saved){
+  if(!saved.length){
+    els.batchList.innerHTML = '<div class="batch-empty">belum ada repo tersimpan. simpan dulu beberapa repo pakai tombol ☆ di daftar.</div>';
+    els.btnBatchZip.disabled = true;
+    return;
+  }
+  els.btnBatchZip.disabled = false;
+  els.batchList.innerHTML = saved.map((it,i) => `
+    <div class="batch-item">
+      <input type="checkbox" data-bidx="${i}" ${batchChecked[i] ? 'checked' : ''}>
+      <span class="batch-item-name">${it.owner}/${it.name}</span>
+      <span class="batch-item-meta">★ ${fmtNum(it.stars)}</span>
+    </div>
+  `).join('');
+  els.batchList.querySelectorAll('[data-bidx]').forEach(cb=>{
+    cb.addEventListener('change', ()=>{ batchChecked[cb.dataset.bidx] = cb.checked; });
+  });
+}
+
+els.btnBatchZip.addEventListener('click', async ()=>{
+  const saved = getSaved();
+  const selected = saved.filter((_,i) => batchChecked[i]);
+  if(!selected.length) return;
+  if(typeof JSZip === 'undefined'){
+    alert('Gagal memuat pustaka ZIP (JSZip). Cek koneksi internet lalu coba lagi.');
+    return;
+  }
+  els.btnBatchZip.textContent = 'Membuat ZIP…';
+  els.btnBatchZip.disabled = true;
+  try{
+    const zip = new JSZip();
+    selected.forEach(item => {
+      const scenes = generateScenesFromItem(item);
+      const html = buildStandaloneHtml(scenes, item);
+      zip.file(`${item.name}-carousel.html`, html);
+    });
+    const blob = await zip.generateAsync({type:'blob'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'gitdata-carousel-batch.zip';
+    a.click();
+    URL.revokeObjectURL(url);
+  }catch(e){
+    alert('Gagal membuat ZIP: ' + e.message);
+  }
+  els.btnBatchZip.textContent = '⇩ Unduh semua sebagai ZIP';
+  els.btnBatchZip.disabled = false;
+});
+
+// ================= THEME =================
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme', t);
+  const btn = document.getElementById('themeToggleBtn');
+  if(btn) btn.textContent = t === 'light' ? '🌙' : '☀️';
+}
+function initTheme(){
+  let saved = 'dark';
+  if(gdStorage){ try{ saved = gdStorage.getItem('gitdata_theme') || 'dark'; }catch(e){} }
+  applyTheme(saved);
+}
+document.getElementById('themeToggleBtn').addEventListener('click', ()=>{
+  const current = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+  const next = current === 'light' ? 'dark' : 'light';
+  applyTheme(next);
+  if(gdStorage){ try{ gdStorage.setItem('gitdata_theme', next); }catch(e){} }
+});
+
+// ================= SAVED / BOOKMARKS (localStorage) =================
+function safeStorage(){
+  try{ const k='__gd_test__'; localStorage.setItem(k,'1'); localStorage.removeItem(k); return localStorage; }
+  catch(e){ return null; }
+}
+const gdStorage = safeStorage();
+
+function getSaved(){
+  if(!gdStorage) return [];
+  try{ return JSON.parse(gdStorage.getItem('gitdata_saved') || '[]'); }catch(e){ return []; }
+}
+function setSaved(list){
+  if(!gdStorage) return;
+  try{ gdStorage.setItem('gitdata_saved', JSON.stringify(list)); }catch(e){}
+}
+function isSaved(item){
+  return getSaved().some(s => s.full_name === item.full_name && s.source === item.source);
+}
+function toggleSaved(item){
+  let list = getSaved();
+  if(isSaved(item)){
+    list = list.filter(s => !(s.full_name === item.full_name && s.source === item.source));
+  } else {
+    list.unshift({ ...item, savedAt: Date.now() });
+    list = list.slice(0, 50);
+  }
+  setSaved(list);
+  renderSavedRail();
+}
+
+function renderSavedRail(){
+  const wrap = document.getElementById('savedRail');
+  const saved = getSaved();
+  if(!gdStorage){
+    wrap.parentElement.style.display = 'none';
+    return;
+  }
+  wrap.parentElement.style.display = saved.length ? 'block' : 'none';
+  wrap.innerHTML = saved.map((item, i) => `
+    <div class="saved-chip" data-idx="${i}">
+      <span class="saved-name">${item.owner}/${item.name}</span>
+      <button class="saved-x" data-remove="${i}" title="hapus">✕</button>
+    </div>
+  `).join('');
+  wrap.querySelectorAll('.saved-chip').forEach(chip=>{
+    chip.addEventListener('click', (e)=>{
+      if(e.target.dataset.remove !== undefined && e.target.matches('[data-remove]')) return;
+      const item = saved[parseInt(chip.dataset.idx)];
+      currentItems = [item, ...currentItems.filter(x=>x.full_name!==item.full_name)];
+      showDetail(0);
+    });
+  });
+  wrap.querySelectorAll('[data-remove]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const list = getSaved();
+      list.splice(parseInt(btn.dataset.remove), 1);
+      setSaved(list);
+      renderSavedRail();
+    });
+  });
+}
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  });
+}
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const bar = document.getElementById('installBar');
+  if(bar) bar.style.display = 'flex';
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const installBtn = document.getElementById('installBtn');
+  const dismissBtn = document.getElementById('dismissInstallBtn');
+  if(installBtn) installBtn.addEventListener('click', async () => {
+    if(!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    document.getElementById('installBar').style.display = 'none';
+  });
+  if(dismissBtn) dismissBtn.addEventListener('click', () => {
+    document.getElementById('installBar').style.display = 'none';
+  });
+});
+
+renderCollections();
+renderSavedRail();
+initTheme();
+updateTerminal();
+run();
+</script>
+</body>
+</html>
