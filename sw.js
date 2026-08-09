@@ -1,22 +1,86 @@
-const CACHE = 'gitdata-shell-v1';
-const SHELL = ['./index.html', './manifest.json', './icon.svg'];
+const CACHE = 'gitdata-shell-v2';
 
-self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).catch(()=>{}));
-  self.skipWaiting();
-});
+const SHELL = [
+  './',
+  './index.html',
+  './styles.css',
+  './manifest.json',
+  './icon.svg'
+];
 
-self.addEventListener('activate', (e) => {
-  e.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+// Install service worker baru
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE)
+      .then(cache => cache.addAll(SHELL))
+      .then(() => self.skipWaiting())
   );
-  self.clients.claim();
 });
 
-// App shell cached, everything else (GitHub/GitLab API calls) goes to network as normal.
-self.addEventListener('fetch', (e) => {
-  const url = new URL(e.request.url);
-  if (SHELL.some(s => url.pathname.endsWith(s.replace('./', '')))) {
-    e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+// Aktifkan versi baru dan hapus cache versi lama
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys()
+      .then(keys =>
+        Promise.all(
+          keys
+            .filter(key => key !== CACHE)
+            .map(key => caches.delete(key))
+        )
+      )
+      .then(() => self.clients.claim())
+  );
+});
+
+// Tangani request
+self.addEventListener('fetch', event => {
+  const request = event.request;
+
+  // Untuk navigasi halaman HTML:
+  // selalu coba network terlebih dahulu agar deployment baru langsung terlihat.
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          const copy = response.clone();
+
+          caches.open(CACHE).then(cache => {
+            cache.put(request, copy);
+          });
+
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+
+    return;
   }
+
+  // Untuk asset lain:
+  // cache-first, lalu network jika belum ada.
+  event.respondWith(
+    caches.match(request)
+      .then(cached => {
+        if (cached) {
+          return cached;
+        }
+
+        return fetch(request)
+          .then(response => {
+            if (
+              response &&
+              response.status === 200 &&
+              response.type === 'basic'
+            ) {
+              const copy = response.clone();
+
+              caches.open(CACHE).then(cache => {
+                cache.put(request, copy);
+              });
+            }
+
+            return response;
+          });
+      })
+  );
 });
