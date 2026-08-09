@@ -357,6 +357,26 @@
 </style>
 </head>
 <body>
+<script>
+window.addEventListener('error', function(e){
+  showGdError((e.message||'error') + '\n at ' + (e.filename||'?') + ':' + e.lineno + ':' + e.colno);
+});
+window.addEventListener('unhandledrejection', function(e){
+  var r = e.reason;
+  showGdError('Promise error: ' + (r && r.message ? r.message : String(r)));
+});
+function showGdError(msg){
+  var el = document.getElementById('gdErrorOverlay');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'gdErrorOverlay';
+    el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#3a0d0d;color:#ffb3b3;font-family:monospace;font-size:11.5px;padding:12px;white-space:pre-wrap;border-bottom:2px solid #ff4444;max-height:45vh;overflow:auto;line-height:1.5;';
+    el.innerHTML = '<b>⚠️ GitData error — screenshot ini &amp; kirim ke Claude:</b>\n\n';
+    document.documentElement.appendChild(el);
+  }
+  el.appendChild(document.createTextNode(msg + '\n\n'));
+}
+</script>
 <div class="wrap">
 
   <div id="listView">
