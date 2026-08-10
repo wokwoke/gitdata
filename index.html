@@ -13,12 +13,9 @@
 <meta name="apple-mobile-web-app-title" content="GitData">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon.svg">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<h1 style="color:white;position:relative;z-index:9999">
-    GITDATA TEST
-</h1>
 <script>
 window.addEventListener('error', function(e){
   showGdError((e.message||'error') + '\n at ' + (e.filename||'?') + ':' + e.lineno + ':' + e.colno);
@@ -1478,23 +1475,12 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-document.body.insertAdjacentHTML(
-  'afterbegin',
-  '<div style="position:fixed;z-index:999999;top:0;left:0;right:0;background:red;color:white;padding:20px;font-size:16px;">TEST 1</div>'
-);
-
-try {
-  renderCollections();
-  document.body.insertAdjacentHTML(
-    'afterbegin',
-    '<div style="position:fixed;z-index:999998;top:50px;left:0;right:0;background:green;color:white;padding:10px;">renderCollections OK</div>'
-  );
-} catch(e) {
-  document.body.insertAdjacentHTML(
-    'afterbegin',
-    '<pre style="position:fixed;z-index:999999;top:50px;left:0;right:0;background:#600;color:white;padding:20px;white-space:pre-wrap;">renderCollections ERROR\n' + e.stack + '</pre>'
-  );
-}
-    
+renderCollections();
+renderSavedRail();
+initTheme();
+updateTerminal();
+run();
+</script>
 </body>
 </html>
+  
