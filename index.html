@@ -1478,7 +1478,23 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-document.body.insertAdjacentHTML('afterbegin', '<div style="position:fixed;z-index:999999;top:0;left:0;right:0;background:red;color:white;padding:30px;font-size:20px;">JAVASCRIPT BERJALAN</div>');
+document.body.insertAdjacentHTML(
+  'afterbegin',
+  '<div style="position:fixed;z-index:999999;top:0;left:0;right:0;background:red;color:white;padding:20px;font-size:16px;">TEST 1</div>'
+);
+
+try {
+  renderCollections();
+  document.body.insertAdjacentHTML(
+    'afterbegin',
+    '<div style="position:fixed;z-index:999998;top:50px;left:0;right:0;background:green;color:white;padding:10px;">renderCollections OK</div>'
+  );
+} catch(e) {
+  document.body.insertAdjacentHTML(
+    'afterbegin',
+    '<pre style="position:fixed;z-index:999999;top:50px;left:0;right:0;background:#600;color:white;padding:20px;white-space:pre-wrap;">renderCollections ERROR\n' + e.stack + '</pre>'
+  );
+}
     
 </body>
 </html>
