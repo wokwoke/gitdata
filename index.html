@@ -1477,12 +1477,56 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('installBar').style.display = 'none';
   });
 });
+try {
+  renderCollections();
+  console.log('OK: renderCollections');
+} catch (e) {
+  document.body.insertAdjacentHTML(
+    'afterbegin',
+    '<pre style="position:fixed;z-index:999999;top:0;left:0;right:0;background:#300;color:#fff;padding:20px;white-space:pre-wrap;font-size:14px;">ERROR renderCollections:\n' + e.stack + '</pre>'
+  );
+}
 
-renderCollections();
-renderSavedRail();
-initTheme();
-updateTerminal();
-run();
+try {
+  renderSavedRail();
+  console.log('OK: renderSavedRail');
+} catch (e) {
+  document.body.insertAdjacentHTML(
+    'afterbegin',
+    '<pre style="position:fixed;z-index:999999;top:0;left:0;right:0;background:#300;color:#fff;padding:20px;white-space:pre-wrap;font-size:14px;">ERROR renderSavedRail:\n' + e.stack + '</pre>'
+  );
+}
+
+try {
+  initTheme();
+  console.log('OK: initTheme');
+} catch (e) {
+  document.body.insertAdjacentHTML(
+    'afterbegin',
+    '<pre style="position:fixed;z-index:999999;top:0;left:0;right:0;background:#300;color:#fff;padding:20px;white-space:pre-wrap;font-size:14px;">ERROR initTheme:\n' + e.stack + '</pre>'
+  );
+}
+
+try {
+  updateTerminal();
+  console.log('OK: updateTerminal');
+} catch (e) {
+  document.body.insertAdjacentHTML(
+    'afterbegin',
+    '<pre style="position:fixed;z-index:999999;top:0;left:0;right:0;background:#300;color:#fff;padding:20px;white-space:pre-wrap;font-size:14px;">ERROR updateTerminal:\n' + e.stack + '</pre>'
+  );
+}
+
+try {
+  run();
+  console.log('OK: run');
+} catch (e) {
+  document.body.insertAdjacentHTML(
+    'afterbegin',
+    '<pre style="position:fixed;z-index:999999;top:0;left:0;right:0;background:#300;color:#fff;padding:20px;white-space:pre-wrap;font-size:14px;">ERROR run:\n' + e.stack + '</pre>'
+  );
+}
+
 </script>
 </body>
 </html>
