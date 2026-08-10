@@ -1417,37 +1417,54 @@ function toggleSaved(item){
 
 function renderSavedRail(){
   const wrap = document.getElementById('savedRail');
+
+  // Jangan crash kalau elemen savedRail tidak ada
+  if(!wrap) return;
+
   const saved = getSaved();
+
   if(!gdStorage){
     wrap.parentElement.style.display = 'none';
     return;
   }
+
   wrap.parentElement.style.display = saved.length ? 'block' : 'none';
+
   wrap.innerHTML = saved.map((item, i) => `
     <div class="saved-chip" data-idx="${i}">
       <span class="saved-name">${item.owner}/${item.name}</span>
       <button class="saved-x" data-remove="${i}" title="hapus">✕</button>
     </div>
   `).join('');
+
   wrap.querySelectorAll('.saved-chip').forEach(chip=>{
     chip.addEventListener('click', (e)=>{
       if(e.target.dataset.remove !== undefined && e.target.matches('[data-remove]')) return;
+
       const item = saved[parseInt(chip.dataset.idx)];
-      currentItems = [item, ...currentItems.filter(x=>x.full_name!==item.full_name)];
+
+      currentItems = [
+        item,
+        ...currentItems.filter(x=>x.full_name!==item.full_name)
+      ];
+
       showDetail(0);
     });
   });
+
   wrap.querySelectorAll('[data-remove]').forEach(btn=>{
     btn.addEventListener('click', (e)=>{
       e.stopPropagation();
+
       const list = getSaved();
       list.splice(parseInt(btn.dataset.remove), 1);
+
       setSaved(list);
       renderSavedRail();
     });
   });
 }
-
+  
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(()=>{});
@@ -1476,7 +1493,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 renderCollections();
-/*renderSavedRail();*/
+renderSavedRail();
 initTheme();
 updateTerminal();
 run();
