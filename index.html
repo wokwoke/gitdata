@@ -1493,7 +1493,13 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 renderCollections();
-renderSavedRail();
+
+try {
+  renderSavedRail();
+} catch (e) {
+  console.error('renderSavedRail ERROR:', e);
+}
+
 initTheme();
 updateTerminal();
 run();
